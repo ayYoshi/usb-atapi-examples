@@ -30,7 +30,6 @@ struct usb_cmd_status_wrapper {
 #define DCBW_SIGNATURE 0x43425355
 
 // packet lengths for USB commands
-
 #define CBW_SIZE 31
 #define CSW_SIZE 13
 
