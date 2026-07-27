@@ -5,6 +5,7 @@ uint32_t tag = 0;
 
 int scsi_request_sense(libusb_device_handle *handle) {
   struct usb_cmd_block_wrapper cbw;
+  struct usb_cmd_status_wrapper csw;
   int rc;
   int retry = 0;
   int bytes_transferred;
@@ -79,6 +80,12 @@ int scsi_request_sense(libusb_device_handle *handle) {
   // TODO: Parse the DATA sent by Sense cmd
   for (int i = 0; i < 128; i++) {
     printf("%02x", data_buf[i]);
+  }
+  rc = usb_get_csw(handle, &csw);
+  if (rc != 0) {
+    printf("could not get command status wrapper\n");
+  } else {
+    printf("got command status wrapper\n");
   }
   return 0;
 }

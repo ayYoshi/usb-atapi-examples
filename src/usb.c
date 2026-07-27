@@ -27,7 +27,7 @@ int usb_get_csw(libusb_device_handle *handle,
                 struct usb_cmd_status_wrapper *csw) {
   int bytes_transferred;
   int retry = 0;
-  int rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)&csw,
+  int rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)csw,
                                 CSW_SIZE, &bytes_transferred, 5000);
   // LIBUSB_ERROR_PIPE indicates the bytes did not transfer properly and the
   // endpoint halted.  We try to copy the bytes 5 more times before giving up
@@ -37,7 +37,7 @@ int usb_get_csw(libusb_device_handle *handle,
       printf("stall clear failed with %d\n", rc2);
       return -1;
     }
-    rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)&csw,
+    rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)csw,
                               CSW_SIZE, &bytes_transferred, 5000);
     retry++;
   }
@@ -48,10 +48,9 @@ int usb_get_csw(libusb_device_handle *handle,
   }
   printf("Bulk Transfer IN Succeeded with %d bytes transferred\n", bytes_transferred);
   printf("CSW SIGNATURE: 0x%08x\n", csw->dCSWSignature);
-  printf("CSW TAG: 0x%08x\n", csw->dCSWSignature);
+  printf("CSW TAG: 0x%08x\n", csw->dCSWTag);
   printf("CSW RESIDUE: 0x%08x\n", csw->dCSWDataResidue);
   printf("CSW STATUS: 0x%02x\n", csw->bCSWStatus);
-
 
   return 0;
 }
