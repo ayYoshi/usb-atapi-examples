@@ -1,13 +1,10 @@
 #include "../include/atapi.h"
 #include "../include/usb.h"
-#include <libusb-1.0/libusb.h>
-#define RETRY_MAX 5
 
-uint32_t tag;
+uint32_t tag = 0;
 
 int scsi_request_sense(libusb_device_handle *handle) {
   struct usb_cmd_block_wrapper cbw;
-  struct usb_cmd_status_wrapper csw;
   int rc;
   int retry = 0;
   int bytes_transferred;
@@ -54,6 +51,7 @@ int scsi_request_sense(libusb_device_handle *handle) {
            libusb_error_name(rc), bytes_transferred);
     return -1;
   }
+  printf("Bulk Transfer OUT succeeded with %d bytes transferred\n", bytes_transferred);
   // TODO: Verify device recieved the correct amount of bytes
   // since the transfer of the command worked, we now try to read the sense data
   // from the drive
@@ -77,6 +75,7 @@ int scsi_request_sense(libusb_device_handle *handle) {
            libusb_error_name(rc), bytes_transferred);
     return -1;
   }
+  printf("Bulk Transfer IN succeeded with %d bytes transferred\n", bytes_transferred);
   // TODO: Parse the DATA sent by Sense cmd
   for (int i = 0; i < 128; i++) {
     printf("%02x", data_buf[i]);

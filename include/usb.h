@@ -34,5 +34,7 @@ struct usb_cmd_status_wrapper {
 #define CSW_SIZE 13
 
 // send USB BULK-ONLY RESET. takes device handle and the IN/OUT endpoints
-int bulk_storage_reset(libusb_device_handle *handle, int endpoint_in, int endpoint_out);
+int usb_bulk_storage_reset(libusb_device_handle *handle);
+// get csw from usb device. csw is valid if function returns 0
+int usb_get_csw(libusb_device_handle *handle, struct usb_cmd_status_wrapper *csw);
 
