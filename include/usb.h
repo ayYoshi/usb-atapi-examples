@@ -28,6 +28,7 @@ struct usb_cmd_status_wrapper {
 };
 
 #define DCBW_SIGNATURE 0x43425355
+#define DCSW_SIGNATURE 0x53425355
 
 // packet lengths for USB commands
 #define CBW_SIZE 31
@@ -35,6 +36,7 @@ struct usb_cmd_status_wrapper {
 
 // send USB BULK-ONLY RESET. takes device handle and the IN/OUT endpoints
 int usb_bulk_storage_reset(libusb_device_handle *handle);
-// get csw from usb device. csw is valid if function returns 0
-int usb_get_csw(libusb_device_handle *handle, struct usb_cmd_status_wrapper *csw);
-
+/* get csw from usb device. returns -1 if the csw is invalid, otherwise returns
+ * bCSWStatus. expected_tag is the tag that the csw should contain
+ */
+int usb_get_csw(libusb_device_handle *handle, int *expected_tag);

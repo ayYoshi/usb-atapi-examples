@@ -23,11 +23,11 @@ int usb_bulk_storage_reset(libusb_device_handle *handle) {
   }
   return 0;
 }
-int usb_get_csw(libusb_device_handle *handle,
-                struct usb_cmd_status_wrapper *csw) {
+int usb_get_csw(libusb_device_handle *handle, int *expected_tag) {
+  struct usb_cmd_status_wrapper csw;
   int bytes_transferred;
   int retry = 0;
-  int rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)csw,
+  int rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)&csw,
                                 CSW_SIZE, &bytes_transferred, 5000);
   // LIBUSB_ERROR_PIPE indicates the bytes did not transfer properly and the
   // endpoint halted.  We try to copy the bytes 5 more times before giving up
@@ -37,7 +37,7 @@ int usb_get_csw(libusb_device_handle *handle,
       printf("stall clear failed with %d\n", rc2);
       return -1;
     }
-    rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)csw,
+    rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)&csw,
                               CSW_SIZE, &bytes_transferred, 5000);
     retry++;
   }
@@ -46,18 +46,27 @@ int usb_get_csw(libusb_device_handle *handle,
            libusb_error_name(rc), bytes_transferred);
     return -1;
   }
-  printf("Bulk Transfer IN Succeeded with %d bytes transferred\n", bytes_transferred);
-  printf("CSW SIGNATURE: 0x%08x\n", csw->dCSWSignature);
-  printf("CSW TAG: 0x%08x\n", csw->dCSWTag);
-  printf("CSW RESIDUE: 0x%08x\n", csw->dCSWDataResidue);
-  printf("CSW STATUS: 0x%02x\n", csw->bCSWStatus);
+  if (bytes_transferred != CSW_SIZE) {
+    printf("Host read %d bytes (expected %d)\n", bytes_transferred, CSW_SIZE);
+    return -1;
+  }
+  // All CSW packets must have the signature 0x53425355
+  if (csw.dCSWSignature != DCSW_SIGNATURE) {
+    printf("Invalid dCSWSignature of 0x%08x\n", csw.dCSWSignature);
+    return -1;
+  }
+  if (csw.dCSWTag != *expected_tag) {
+    printf("Invalid Tag (is %d, expected %d\n", csw.dCSWTag, *expected_tag);
+    return -1;
+  }
+  // we ignore dCSWDataResidue as many devices set it incorrectly
 
-  return 0;
+  /*
+  printf("CSW SIGNATURE: 0x%08x\n", csw.dCSWSignature);
+  printf("CSW TAG: 0x%08x\n", csw.dCSWTag);
+  printf("CSW RESIDUE: 0x%08x\n", csw.dCSWDataResidue);
+  printf("CSW STATUS: 0x%02x\n", csw.bCSWStatus);
+  */
+
+  return csw.bCSWStatus;
 }
-
-
-
-
-
-
-
