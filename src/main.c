@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
     printf("command failed with %d\n", rc);
     return -1;
   }
-  printf("getting usb status...\n");
+  printf("command succeeded with sense key %d\n", rc);
 
   return EXIT_SUCCESS;
 }

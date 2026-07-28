@@ -10,10 +10,10 @@ int scsi_request_sense(libusb_device_handle *handle) {
   int retry = 0;
   int bytes_transferred;
   unsigned char cdb[12];
-  // data_buf is for debugging purposes
-  unsigned char data_buf[128];
+  // sense_data is for debugging purposes
+  unsigned char sense_data[20];
   memset(cdb, 0, 12);
-  memset(data_buf, 0, 128);
+  memset(sense_data, 0, 20);
   // set up the CDB with the correct opcode and allocation length
   cdb[0] = REQUEST_SENSE_OPCODE;
   cdb[4] = 0x14;
@@ -41,7 +41,7 @@ int scsi_request_sense(libusb_device_handle *handle) {
     int rc2 = libusb_clear_halt(handle, ENDPOINT_OUT);
     if (rc2 != 0) {
       printf("stall clear failed with %d\n", rc2);
-      return -1;
+      return -127;
     }
     rc = libusb_bulk_transfer(handle, ENDPOINT_OUT, (unsigned char *)&cbw,
                               CBW_SIZE, &bytes_transferred, 5000);
@@ -50,42 +50,50 @@ int scsi_request_sense(libusb_device_handle *handle) {
   if (rc != 0) {
     printf("Bulk Transfer OUT failed with %s and %d bytes transferred\n",
            libusb_error_name(rc), bytes_transferred);
-    return -1;
+    return -127;
+  }
+  if (bytes_transferred != CBW_SIZE) {
+    printf("Host only send %d bytes (expected %d)\n", bytes_transferred, CBW_SIZE);
+    return -127;
   }
   printf("Bulk Transfer OUT succeeded with %d bytes transferred\n", bytes_transferred);
-  // TODO: Verify device recieved the correct amount of bytes
-  // since the transfer of the command worked, we now try to read the sense data
-  // from the drive
 
   retry = 0;
-  rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)&data_buf,
-                            128, &bytes_transferred, 5000);
+  rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)sense_data,
+                            20, &bytes_transferred, 5000);
   while ((rc == LIBUSB_ERROR_PIPE) && (retry < RETRY_MAX)) {
     printf("clearing halt...\n");
     int rc2 = libusb_clear_halt(handle, ENDPOINT_IN);
     if (rc2 != 0) {
       printf("stall clear failed with %d\n", rc2);
-      return -1;
+      return -127;
     }
-    rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)&data_buf,
-                              128, &bytes_transferred, 5000);
+    rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)sense_data,
+                              20, &bytes_transferred, 5000);
     retry++;
   }
   if (rc != 0) {
     printf("Bulk Transfer IN failed with %s and %d bytes transferred\n",
            libusb_error_name(rc), bytes_transferred);
-    return -1;
+    return -127;
+  }
+  if (bytes_transferred != 20) {
+    // We log the error, but do not stop execution as different drives may send different SENSE lengths
+    printf("Host only send %d bytes (expected %d)\n", bytes_transferred, 20);
   }
   printf("Bulk Transfer IN succeeded with %d bytes transferred\n", bytes_transferred);
-  // TODO: Parse the DATA sent by Sense cmd
-  for (int i = 0; i < 128; i++) {
-    printf("%02x", data_buf[i]);
-  }
   rc = usb_get_csw(handle, &csw);
   if (rc != 0) {
-    printf("could not get command status wrapper\n");
-  } else {
-    printf("got command status wrapper\n");
+    printf("invalid command status wrapper\n");
+    return -127;
   }
-  return 0;
+  // First, we ensure that the CSW returned 0
+  if (csw.bCSWStatus != 0) {
+    printf("bCSWStatus returned %d\n", csw.bCSWStatus);
+    return csw.bCSWStatus * -1;
+  }
+  // Since the CSW is valid, we can now prepare and return the SENSE Key
+  // by erasing all bits except the ones containing the SENSE key
+  return (sense_data[2] & 0b00001111);
+  // TODO: Allow the function to optionally return the raw SENSE data via a pointer or smth
 }
