@@ -39,4 +39,6 @@ int usb_bulk_storage_reset(libusb_device_handle *handle);
 /* get csw from usb device. returns -1 if the csw is invalid, otherwise returns
  * bCSWStatus. expected_tag is the tag that the csw should contain
  */
-int usb_get_csw(libusb_device_handle *handle, int *expected_tag);
+int usb_get_csw(libusb_device_handle *handle, uint32_t *expected_tag);
+// sends CBW to device. size of cbwcb will always be assumed to be 12. returns -1 for USB transfer failure
+int usb_send_cbw(libusb_device_handle *handle, unsigned char *cbwcb, uint32_t dCBWDataTransferLength, uint32_t *returned_tag);

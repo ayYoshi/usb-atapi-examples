@@ -27,12 +27,15 @@ int main(int argc, char *argv[]) {
   printf("all basic checks passed\n");
 
   printf("sending sense command...\n");
-  int rc = scsi_request_sense(discreader);
-  if (rc != 0) {
-    printf("command failed with %d\n", rc);
-    return -1;
+  for (int i = 0; i < 5; i++) {
+    int rc = scsi_request_sense(discreader);
+    if (rc != 0) {
+      printf("command failed with %d\n", rc);
+      return -1;
+    }
+    printf("command succeeded with sense key %d\n", rc);
   }
-  printf("command succeeded with sense key %d\n", rc);
+  libusb_close(discreader);
 
   return EXIT_SUCCESS;
 }
