@@ -41,6 +41,13 @@ int main(int argc, char *argv[]) {
     printf("command failed with %d\n", rc);
     return -1;
   }
+  printf("sensing start/stop unit command (disc ejection)...\n");
+  // to eject a disc, LoEj must be set to 1 and START must be set to 0
+  rc = scsi_start_stop_unit(discreader, 0, 1, 0);
+  if (rc != 0) {
+    printf("command failed with %d\n", rc);
+    return -1;
+  }
   printf("command succeeded\n");
   libusb_close(discreader);
 

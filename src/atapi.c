@@ -82,8 +82,41 @@ int scsi_prevent_allow_medium_removal(libusb_device_handle *handle,
     printf("invalid command status wrapper\n");
     return -127;
   }
-  // First, we ensure that the CSW returned 0
   return rc;
+}
+int scsi_start_stop_unit(libusb_device_handle *handle, uint8_t immed, uint8_t LoEj, uint8_t start) {
+  int rc;
+  uint32_t expected_tag;
+  unsigned char cdb[12];
+  if ((immed != 1) && (immed != 0)) {
+    printf("invalid immed\n");
+    return -1;
+  }
+  if ((LoEj != 1) && (LoEj != 0)) {
+    printf("invalid LoEj\n");
+    return -1;
+  }
+  if ((start != 1) && (start != 0)) {
+    printf("invalid start\n");
+    return -1;
+  }
+  memset(cdb, 0, 12);
+  // Start/Stop Unit opcode: 0x1B
+  cdb[0] = 0x1B;
+  cdb[1] = immed;
+  // set bit 0 to START and bit 1 to LoEj
+  cdb[4] = ((start) | (LoEj << 1));
+  if (usb_send_cbw(handle, cdb, 0, &expected_tag) != 0) {
+    printf("couldn't send command to USB device");
+    return -1;
+  }
+  rc = usb_get_csw(handle, &expected_tag);
+  if (rc < 0) {
+    printf("invalid command status wrapper\n");
+    return -1;
+  }
+  return rc;
+
 }
 
 
