@@ -35,6 +35,13 @@ int main(int argc, char *argv[]) {
     }
     printf("command succeeded with sense key %d\n", rc);
   }
+  printf("sensing prevent/allow medium removal command...\n");
+  int rc = scsi_prevent_allow_medium_removal(discreader, 0);
+  if (rc != 0) {
+    printf("command failed with %d\n", rc);
+    return -1;
+  }
+  printf("command succeeded\n");
   libusb_close(discreader);
 
   return EXIT_SUCCESS;

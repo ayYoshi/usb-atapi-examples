@@ -2,11 +2,8 @@
 #include "../include/usb.h"
 #include <stdint.h>
 
-
 int scsi_request_sense(libusb_device_handle *handle) {
   uint32_t tag;
-  struct usb_cmd_block_wrapper cbw;
-  struct usb_cmd_status_wrapper csw;
   int rc;
   int retry = 0;
   int bytes_transferred;
@@ -40,10 +37,12 @@ int scsi_request_sense(libusb_device_handle *handle) {
     return -127;
   }
   if (bytes_transferred != 20) {
-    // We log the error, but do not stop execution as different drives may send different SENSE lengths
+    // We log the error, but do not stop execution as different drives may send
+    // different SENSE lengths
     printf("Host only send %d bytes (expected %d)\n", bytes_transferred, 20);
   }
-  printf("Bulk Transfer IN succeeded with %d bytes transferred\n", bytes_transferred);
+  printf("Bulk Transfer IN succeeded with %d bytes transferred\n",
+         bytes_transferred);
   rc = usb_get_csw(handle, &tag);
   if (rc < 0) {
     printf("invalid command status wrapper\n");
@@ -51,11 +50,47 @@ int scsi_request_sense(libusb_device_handle *handle) {
   }
   // First, we ensure that the CSW returned 0
   if (rc != 0) {
-    printf("bCSWStatus returned %d\n", csw.bCSWStatus);
-    return csw.bCSWStatus * -1;
+    printf("bCSWStatus returned %d\n", rc);
+    return rc * -1;;
   }
   // Since the CSW is valid, we can now prepare and return the SENSE Key
   // by erasing all bits except the ones containing the SENSE key
   return (sense_data[2] & 0b00001111);
-  // TODO: Allow the function to optionally return the raw SENSE data via a pointer or smth
+  // TODO: Allow the function to optionally return the raw SENSE data via a
+  // pointer or smth
 }
+int scsi_prevent_allow_medium_removal(libusb_device_handle *handle,
+                                      uint8_t prevent_flag) {
+  int rc;
+  uint32_t expected_tag;
+  unsigned char cdb[12];
+  if ((prevent_flag != 1) && (prevent_flag != 0)) {
+    printf("invalid prevent_flag\n");
+    return -1;
+  }
+  memset(cdb, 0, 12);
+  // Prevent/Allow Medium Removal Opcode: ox1E
+  cdb[0] = 0x1E;
+  cdb[4] = prevent_flag;
+
+  if (usb_send_cbw(handle, cdb, 0, &expected_tag) != 0) {
+    printf("couldn't send command to USB device");
+    return -1;
+  }
+  rc = usb_get_csw(handle, &expected_tag);
+  if (rc < 0) {
+    printf("invalid command status wrapper\n");
+    return -127;
+  }
+  // First, we ensure that the CSW returned 0
+  return rc;
+}
+
+
+
+
+
+
+
+
+

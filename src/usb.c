@@ -63,13 +63,14 @@ int usb_get_csw(libusb_device_handle *handle, uint32_t *expected_tag) {
   }
   // we ignore dCSWDataResidue as many devices set it incorrectly
 
-  
+  /*
   printf("CSW SIGNATURE: 0x%08x\n", csw.dCSWSignature);
   printf("CSW TAG: 0x%08x\n", csw.dCSWTag);
   printf("CSW RESIDUE: 0x%08x\n", csw.dCSWDataResidue);
   printf("CSW STATUS: 0x%02x\n", csw.bCSWStatus);
+  */
 
-  return (int) csw.bCSWStatus;
+  return csw.bCSWStatus;
 }
 int usb_send_cbw(libusb_device_handle *handle, unsigned char *cbwcb, uint32_t dCBWDataTransferLength, uint32_t *returned_tag) {
   struct usb_cmd_block_wrapper cbw;
@@ -120,7 +121,6 @@ int usb_send_cbw(libusb_device_handle *handle, unsigned char *cbwcb, uint32_t dC
     return -127;
   }
   printf("Bulk Transfer OUT succeeded with %d bytes transferred\n", bytes_transferred);
-
   return 0;
 }
 
