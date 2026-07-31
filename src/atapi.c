@@ -2,23 +2,27 @@
 #include "../include/usb.h"
 #include <stdint.h>
 
-int scsi_request_sense(libusb_device_handle *handle) {
+int scsi_request_sense(libusb_device_handle *handle, struct scsi_sense_data *sense_data) {
   uint32_t tag;
   int rc;
   int retry = 0;
   int bytes_transferred;
   unsigned char cdb[12];
   // sense_data is for debugging purposes
-  unsigned char sense_data[20];
+  unsigned char data_buf[20];
   memset(cdb, 0, 12);
-  memset(sense_data, 0, 20);
+  memset(data_buf, 0, 20);
   // set up the CDB with the correct opcode and allocation length
   cdb[0] = REQUEST_SENSE_OPCODE;
   cdb[4] = 0x14;
   // set up cbw
   retry = 0;
   rc = usb_send_cbw(handle, cdb, 0x14, &tag);
-  rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)sense_data,
+  if (rc != 0) {
+    printf("couldnt send SENSE command (%d)\n", rc);
+    return -127;
+  }
+  rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)data_buf,
                             20, &bytes_transferred, 5000);
   while ((rc == LIBUSB_ERROR_PIPE) && (retry < RETRY_MAX)) {
     printf("clearing halt...\n");
@@ -27,7 +31,7 @@ int scsi_request_sense(libusb_device_handle *handle) {
       printf("stall clear failed with %d\n", rc2);
       return -127;
     }
-    rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)sense_data,
+    rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)data_buf,
                               20, &bytes_transferred, 5000);
     retry++;
   }
@@ -55,9 +59,12 @@ int scsi_request_sense(libusb_device_handle *handle) {
   }
   // Since the CSW is valid, we can now prepare and return the SENSE Key
   // by erasing all bits except the ones containing the SENSE key
-  return (sense_data[2] & 0b00001111);
+  sense_data->senseKey = (data_buf[2] & 0b00001111);
+  sense_data->ASC = data_buf[12];
+  sense_data->ASCQ = data_buf[13];
   // TODO: Allow the function to optionally return the raw SENSE data via a
   // pointer or smth
+  return 0;
 }
 int scsi_prevent_allow_medium_removal(libusb_device_handle *handle,
                                       uint8_t prevent_flag) {

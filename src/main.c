@@ -28,9 +28,10 @@ int main(int argc, char *argv[]) {
 
   printf("sending sense command...\n");
   for (int i = 0; i < 5; i++) {
-    int rc = scsi_request_sense(discreader);
+    struct scsi_sense_data sense;
+    int rc = scsi_request_sense(discreader, &sense);
     if (rc != 0) {
-      printf("command failed with %d\n", rc);
+      printf("command failed with %d\n", sense.senseKey);
       return -1;
     }
     printf("command succeeded with sense key %d\n", rc);
@@ -43,9 +44,16 @@ int main(int argc, char *argv[]) {
   }
   printf("sensing start/stop unit command (disc ejection)...\n");
   // to eject a disc, LoEj must be set to 1 and START must be set to 0
-  rc = scsi_start_stop_unit(discreader, 0, 1, 0);
+  rc = scsi_start_stop_unit(discreader, 0, 1, 1);
   if (rc != 0) {
-    printf("command failed with %d\n", rc);
+    printf("command failed with %d\n. getting sense...", rc);
+    struct scsi_sense_data sense;
+    int rc = scsi_request_sense(discreader, &sense);
+    if (rc != 0) {
+      printf("command failed with:\nSENSE KEY: %d\nASC: %d\nASCQ: %d\n", sense.senseKey, sense.ASC, sense.ASCQ);
+      return -1;
+    }
+    printf("command success with:\nSENSE KEY: 0x%02x\nASC: 0x%02x\nASCQ: 0x%02x\n", sense.senseKey, sense.ASC, sense.ASCQ);
     return -1;
   }
   printf("command succeeded\n");
