@@ -2,7 +2,8 @@
 #include "../include/usb.h"
 #include <stdint.h>
 
-int scsi_request_sense(libusb_device_handle *handle, struct scsi_sense_data *sense_data) {
+int scsi_request_sense(libusb_device_handle *handle,
+                       struct scsi_sense_data *sense_data) {
   uint32_t tag;
   int rc;
   int retry = 0;
@@ -22,8 +23,8 @@ int scsi_request_sense(libusb_device_handle *handle, struct scsi_sense_data *sen
     printf("couldnt send SENSE command (%d)\n", rc);
     return -127;
   }
-  rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)data_buf,
-                            20, &bytes_transferred, 5000);
+  rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)data_buf, 20,
+                            &bytes_transferred, 5000);
   while ((rc == LIBUSB_ERROR_PIPE) && (retry < RETRY_MAX)) {
     printf("clearing halt...\n");
     int rc2 = libusb_clear_halt(handle, ENDPOINT_IN);
@@ -55,7 +56,8 @@ int scsi_request_sense(libusb_device_handle *handle, struct scsi_sense_data *sen
   // First, we ensure that the CSW returned 0
   if (rc != 0) {
     printf("bCSWStatus returned %d\n", rc);
-    return rc * -1;;
+    return rc * -1;
+    ;
   }
   // Since the CSW is valid, we can now prepare and return the SENSE Key
   // by erasing all bits except the ones containing the SENSE key
@@ -91,7 +93,8 @@ int scsi_prevent_allow_medium_removal(libusb_device_handle *handle,
   }
   return rc;
 }
-int scsi_start_stop_unit(libusb_device_handle *handle, uint8_t immed, uint8_t LoEj, uint8_t start) {
+int scsi_start_stop_unit(libusb_device_handle *handle, uint8_t immed,
+                         uint8_t LoEj, uint8_t start) {
   int rc;
   uint32_t expected_tag;
   unsigned char cdb[12];
@@ -123,9 +126,8 @@ int scsi_start_stop_unit(libusb_device_handle *handle, uint8_t immed, uint8_t Lo
     return -1;
   }
   return rc;
-
 }
-int scsi_inquiry(libusb_device_handle *handle, unsigned char* data) {
+int scsi_inquiry(libusb_device_handle *handle, unsigned char *data) {
   int rc;
   int bytes_transferred;
   int retry = 0;
@@ -162,7 +164,8 @@ int scsi_inquiry(libusb_device_handle *handle, unsigned char* data) {
   if (bytes_transferred != INQUIRY_DATA_LENGTH) {
     // We log the error, but do not stop execution as different drives may send
     // different INQUIRY lengths
-    printf("Host only send %d bytes (expected %d)\n", bytes_transferred, INQUIRY_DATA_LENGTH);
+    printf("Host only send %d bytes (expected %d)\n", bytes_transferred,
+           INQUIRY_DATA_LENGTH);
   }
   printf("Bulk Transfer IN succeeded with %d bytes transferred\n",
          bytes_transferred);
@@ -174,11 +177,40 @@ int scsi_inquiry(libusb_device_handle *handle, unsigned char* data) {
   return rc;
 }
 
+void scsi_inquiry_pprint(unsigned char *inquiry_data) {
+  int peripheral_device_type = inquiry_data[0] & 0b00011111;
+  printf("Peripheral Device Type: %02x: ", peripheral_device_type);
+  switch (peripheral_device_type) {
+  case 0x00:
+    printf("DIRECT_ACCESS DEVICE");
+    break;
+  case 0x05:
+    printf("CD-ROM DEVICE");
+    break;
+  case 0x07:
+    printf("OPTICAL MEMORY DEVICE");
+    break;
+  default:
+    printf("UNKNOWN DEVICE TYPE");
+    break;
+  }
+  printf("\n");
+  (inquiry_data[1] >> 7) ? printf("Device can remove media\n")
+                         : printf("Device cannot remove media\n");
+  printf("ISO Version: %d\n", (inquiry_data[2] >> 6));
+  printf("ECMA Version: %d\n", ((inquiry_data[2] & 0b00111000) >> 3));
+  printf("ANSI Version: %d\n", (inquiry_data[2] & 0b00000111));
 
+  printf("ATAPI Version: %d\n", (inquiry_data[3] >> 4));
+  printf("Response Data Format: %d\n", ((inquiry_data[3] & 0b00001111)));
+  char vendor_id[9];
+  memcpy(vendor_id, inquiry_data+8, 8);
+  printf("Vendor ID: %s\n", vendor_id);
+  char product_id[17];
+  memcpy(product_id, inquiry_data+16, 16);
+  printf("Product ID: %s\n", product_id);
+  char product_rev[5];
+  memcpy(product_rev, inquiry_data+32, 4);
+  printf("Product Revision: %s\n", product_rev);
 
-
-
-
-
-
-
+}

@@ -14,7 +14,7 @@ struct scsi_sense_data {
   uint8_t ASCQ;
 };
 
-
+/* SCSI COMMANDS */
 
 /* sends scsi sense command to cdrom. Pass a sense_data struct to retrieve SENSE data
  * returns -127 for USB transfer related errors, returns 1 or 2 for csw status.
@@ -30,5 +30,7 @@ int scsi_start_stop_unit(libusb_device_handle *handle, uint8_t immed, uint8_t Lo
 int scsi_inquiry(libusb_device_handle *handle, unsigned char* data);
 
 
+// Prints inquiry data in a readable format. inquiry_data must be at least 95 bytes long
+void scsi_inquiry_pprint(unsigned char* inquiry_data);
 
 //int scsi_read_TOC(libusb_device_handle *handle, )

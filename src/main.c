@@ -48,6 +48,7 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < INQUIRY_DATA_LENGTH; i++) {
     printf("%d : %02x : %c\n", i, inq_data[i], inq_data[i]);
   }
-  printf("\n\n\nDone.");
+  printf("\n\n\nDone.\n");
+  scsi_inquiry_pprint(inq_data);
   return 0;
 }
