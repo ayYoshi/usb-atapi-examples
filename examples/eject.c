@@ -1,4 +1,3 @@
-
 #include "../include/atapi.h"
 #include "../include/usb.h"
 
@@ -27,14 +26,10 @@ int main(int argc, char *argv[]) {
   }
   printf("all basic checks passed\n");
 
-  // Prepare data buffer for INQUIRY data
-  unsigned char inq_data[INQUIRY_DATA_LENGTH];
-  memset(inq_data, 0, INQUIRY_DATA_LENGTH);
-
-  printf("Sending Inquiry Command...\n");
-  int rc = scsi_inquiry(discreader, inq_data);
+  printf("sending prevent/allow medium removal command...\n");
+  int rc = scsi_prevent_allow_medium_removal(discreader, 0);
   if (rc != 0) {
-    printf("Get Inquiry FAILED with %d. Getting sense...\n", rc);
+    printf("command failed with %d\n. getting sense...", rc);
     struct scsi_sense_data sense;
     int rc = scsi_request_sense(discreader, &sense);
     if (rc != 0) {
@@ -44,10 +39,22 @@ int main(int argc, char *argv[]) {
     printf("Got SENSE data:\nSENSE KEY: 0x%02x\nASC: 0x%02x\nASCQ: 0x%02x\n", sense.senseKey, sense.ASC, sense.ASCQ);
     return -1;
   }
-  printf("Dumping INQUIRY Data...\n\n\n");
-  for (int i = 0; i < INQUIRY_DATA_LENGTH; i++) {
-    printf("%d : %02x : %c\n", i, inq_data[i], inq_data[i]);
+  printf("sending start/stop unit command (disc ejection)...\n");
+  // to eject a disc, LoEj must be set to 1 and START must be set to 0
+  rc = scsi_start_stop_unit(discreader, 0, 1, 0);
+  if (rc != 0) {
+    printf("command failed with %d\n. getting sense...", rc);
+    struct scsi_sense_data sense;
+    int rc = scsi_request_sense(discreader, &sense);
+    if (rc != 0) {
+      printf("command failed with:\nSENSE KEY: %d\nASC: %d\nASCQ: %d\n", sense.senseKey, sense.ASC, sense.ASCQ);
+      return -1;
+    }
+    printf("command success with:\nSENSE KEY: 0x%02x\nASC: 0x%02x\nASCQ: 0x%02x\n", sense.senseKey, sense.ASC, sense.ASCQ);
+    return -1;
   }
-  printf("\n\n\nDone.");
-  return 0;
+  printf("command succeeded\n");
+  libusb_close(discreader);
+
+  return EXIT_SUCCESS;
 }
