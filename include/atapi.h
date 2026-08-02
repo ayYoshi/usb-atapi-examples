@@ -41,6 +41,6 @@ int scsi_read_toc(libusb_device_handle *handle, uint8_t format, uint8_t track_nu
 
 // Prints inquiry data in a readable format. inquiry_data must be at least 95 bytes long
 void scsi_inquiry_pprint(unsigned char* inquiry_data);
-// Prints TOC Data in a readable format. Expected format is Format Field 0b00 and MSF bit enabled. Invalid/shortened TOC data may result in a segfault
+// Prints TOC Data in a readable format. Expected format is Format Field 0b00 and MSF bit disabled. Invalid/shortened TOC data may result in a segfault
 void scsi_TOC_pprint(unsigned char* toc_data);
 

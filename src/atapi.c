@@ -176,7 +176,8 @@ int scsi_inquiry(libusb_device_handle *handle, unsigned char *data) {
   }
   return rc;
 }
-int scsi_read_toc(libusb_device_handle *handle, uint8_t format, uint8_t track_number, unsigned char *data) {
+int scsi_read_toc(libusb_device_handle *handle, uint8_t format,
+                  uint8_t track_number, unsigned char *data) {
   int rc;
   int bytes_transferred;
   int retry = 0;
@@ -282,28 +283,28 @@ void scsi_inquiry_pprint(unsigned char *inquiry_data) {
   memcpy(product_rev, inquiry_data + 32, 4);
   printf("Product Revision: %s\n", product_rev);
 }
-void scsi_TOC_pprint(unsigned char* toc_data) {
+void scsi_TOC_pprint(unsigned char *toc_data) {
   printf("\n*** TOC DATA ***\n");
   uint16_t data_length;
-  // MSB is stored in toc_data[0], LSB stored in toc_data[1]
   data_length = (toc_data[1] | (toc_data[0] << 8));
   printf("Data Length: %d (0x%04x)\n", data_length, data_length);
   printf("Starting Track: %d\n", toc_data[2]);
-  printf("Ending Track: %d\n", toc_data[3]);
-  // We will ignore TOC Track Descriptors and parse the last 8 bytes of the DATA block
-  unsigned char *toc_data_tail = toc_data + (data_length - 8);
-  printf("ADR: 0x%02x\n", (toc_data_tail[1] >> 4));
-  printf("CONTROL: 0x%02x\n", (toc_data_tail[1] & 0b00001111));
-  printf("Track Number: %d\n", toc_data_tail[2]);
-  printf("M Field: 0x%02x\n", toc_data_tail[5]);
-  printf("S Field: 0x%02x\n", toc_data_tail[6]);
-  printf("F Field: 0x%02x\n", toc_data_tail[7]);
-
+  printf("Ending Track: %d\n\n", toc_data[3]);
+  // This number includes the leadout track, which is why we add 2 instead of 1
+  int total_track_number = toc_data[3] - toc_data[2] + 2;
+  unsigned char *track_ptr = toc_data + 4;
+  for (int i = 0; i < total_track_number; i++) {
+    if (track_ptr[2] == 0xAA) {
+      printf("Track Number: 0xAA (leadout)\n");
+    } else {
+      printf("Track Number: %d\n", track_ptr[2]);
+    }
+    printf("ADDR: 0x%02x\n", track_ptr[1] >> 4);
+    printf("CONTROL: 0x%02x\n", track_ptr[1] & 0b00001111);
+    // Track Address has the LSB at Byte 7 and MSB at Byte 4
+    uint32_t track_address = track_ptr[7] | (track_ptr[6] << 8) |
+                             (track_ptr[5] << 16) | (track_ptr[4] << 24);
+    printf("Track Address (LBA): %d\n\n", track_address);
+    track_ptr += 8;
+  }
 }
-
-
-
-
-
-
-
