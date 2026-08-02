@@ -61,8 +61,49 @@ int main(int argc, char *argv[]) {
   printf("command succeeded\n");
   unsigned char toc_data[805];
   memset(toc_data, 0, 805);
-  printf("\nAttempting to read TOC...\n");
-  rc = scsi_read_toc(discreader, 0, 1, toc_data);
+  int toc_format = 0b00;
+  printf("\nAttempting to read TOC with format %d...\n", toc_format);
+  rc = scsi_read_toc(discreader, toc_format, 1, toc_data);
+  if (rc != 0) {
+    printf("Get TOC FAILED with %d. Getting sense...\n", rc);
+    struct scsi_sense_data sense;
+    int rc = scsi_request_sense(discreader, &sense);
+    if (rc != 0) {
+      printf("could not get sense data\n");
+      return -1;
+    }
+    printf("Got SENSE data:\nSENSE KEY: 0x%02x\nASC: 0x%02x\nASCQ: 0x%02x\n", sense.senseKey, sense.ASC, sense.ASCQ);
+    return -1;
+  }
+
+  printf("Dumping TOC Data...\r\n\r\n");
+  for (int i = 0; i < sizeof(toc_data); i++) {
+    //printf("%d : %02x : %c\n", i, toc_data[i], toc_data[i]);
+    printf("%c", toc_data[i]);
+  }
+  toc_format = 0b01;
+  printf("\nAttempting to read TOC with format %d...\n", toc_format);
+  rc = scsi_read_toc(discreader, toc_format, 1, toc_data);
+  if (rc != 0) {
+    printf("Get TOC FAILED with %d. Getting sense...\n", rc);
+    struct scsi_sense_data sense;
+    int rc = scsi_request_sense(discreader, &sense);
+    if (rc != 0) {
+      printf("could not get sense data\n");
+      return -1;
+    }
+    printf("Got SENSE data:\nSENSE KEY: 0x%02x\nASC: 0x%02x\nASCQ: 0x%02x\n", sense.senseKey, sense.ASC, sense.ASCQ);
+    return -1;
+  }
+
+  printf("Dumping TOC Data...\r\n\r\n");
+  for (int i = 0; i < sizeof(toc_data); i++) {
+    //printf("%d : %02x : %c\n", i, toc_data[i], toc_data[i]);
+    printf("%c", toc_data[i]);
+  }
+  toc_format = 0b10;
+  printf("\nAttempting to read TOC with format %d...\n", toc_format);
+  rc = scsi_read_toc(discreader, toc_format, 1, toc_data);
   if (rc != 0) {
     printf("Get TOC FAILED with %d. Getting sense...\n", rc);
     struct scsi_sense_data sense;

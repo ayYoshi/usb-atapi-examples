@@ -195,8 +195,8 @@ int scsi_read_toc(libusb_device_handle *handle, uint8_t format, uint8_t track_nu
   memset(cdb, 0, 12);
   // Read TOC Opcode: 0x12
   cdb[0] = 0x43;
-  // Set MSF to 1
-  cdb[1] = 0b00000010;
+  // Set MSF to 0
+  cdb[1] = 0b00000000;
   cdb[2] = format;
   cdb[6] = track_number;
   // To allocate 804 bytes, we must put the LSB in cdb[8] and MSB in cdb[7]
@@ -243,6 +243,7 @@ int scsi_read_toc(libusb_device_handle *handle, uint8_t format, uint8_t track_nu
 }
 
 void scsi_inquiry_pprint(unsigned char *inquiry_data) {
+  printf("\n*** INQUIRY DATA ***\n");
   int peripheral_device_type = inquiry_data[0] & 0b00011111;
   printf("Peripheral Device Type: 0x%02x: ", peripheral_device_type);
   switch (peripheral_device_type) {
@@ -281,3 +282,28 @@ void scsi_inquiry_pprint(unsigned char *inquiry_data) {
   memcpy(product_rev, inquiry_data + 32, 4);
   printf("Product Revision: %s\n", product_rev);
 }
+void scsi_TOC_pprint(unsigned char* toc_data) {
+  printf("\n*** TOC DATA ***\n");
+  uint16_t data_length;
+  // MSB is stored in toc_data[0], LSB stored in toc_data[1]
+  data_length = (toc_data[1] | (toc_data[0] << 8));
+  printf("Data Length: %d (0x%04x)\n", data_length, data_length);
+  printf("Starting Track: %d\n", toc_data[2]);
+  printf("Ending Track: %d\n", toc_data[3]);
+  // We will ignore TOC Track Descriptors and parse the last 8 bytes of the DATA block
+  unsigned char *toc_data_tail = toc_data + (data_length - 8);
+  printf("ADR: 0x%02x\n", (toc_data_tail[1] >> 4));
+  printf("CONTROL: 0x%02x\n", (toc_data_tail[1] & 0b00001111));
+  printf("Track Number: %d\n", toc_data_tail[2]);
+  printf("M Field: 0x%02x\n", toc_data_tail[5]);
+  printf("S Field: 0x%02x\n", toc_data_tail[6]);
+  printf("F Field: 0x%02x\n", toc_data_tail[7]);
+
+}
+
+
+
+
+
+
+
