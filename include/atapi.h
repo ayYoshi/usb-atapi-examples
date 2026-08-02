@@ -28,9 +28,9 @@ int scsi_prevent_allow_medium_removal(libusb_device_handle *handle, uint8_t prev
 int scsi_start_stop_unit(libusb_device_handle *handle, uint8_t immed, uint8_t LoEj, uint8_t start);
 // requests 95 bytes of Inquiry data. The array of data passed in is expected to be 95 bytes of length. Inquiry valid if RC is 0
 int scsi_inquiry(libusb_device_handle *handle, unsigned char* data);
-
+// Read TOC of passed-in Track Number. TODO: Figure out some format for returned data
+int scsi_read_toc(libusb_device_handle *handle, uint8_t format, uint8_t track_number, unsigned char *data);
 
 // Prints inquiry data in a readable format. inquiry_data must be at least 95 bytes long
 void scsi_inquiry_pprint(unsigned char* inquiry_data);
 
-//int scsi_read_TOC(libusb_device_handle *handle, )

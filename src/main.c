@@ -44,11 +44,42 @@ int main(int argc, char *argv[]) {
     printf("Got SENSE data:\nSENSE KEY: 0x%02x\nASC: 0x%02x\nASCQ: 0x%02x\n", sense.senseKey, sense.ASC, sense.ASCQ);
     return -1;
   }
-  printf("Dumping INQUIRY Data...\n\n\n");
-  for (int i = 0; i < INQUIRY_DATA_LENGTH; i++) {
-    printf("%d : %02x : %c\n", i, inq_data[i], inq_data[i]);
-  }
-  printf("\n\n\nDone.\n");
   scsi_inquiry_pprint(inq_data);
+  // Start spinning the disc and read TOC
+  rc = scsi_start_stop_unit(discreader, 0, 0, 1);
+  if (rc != 0) {
+    printf("command failed with %d\n. getting sense...", rc);
+    struct scsi_sense_data sense;
+    int rc = scsi_request_sense(discreader, &sense);
+    if (rc != 0) {
+      printf("command failed with:\nSENSE KEY: %d\nASC: %d\nASCQ: %d\n", sense.senseKey, sense.ASC, sense.ASCQ);
+      return -1;
+    }
+    printf("command success with:\nSENSE KEY: 0x%02x\nASC: 0x%02x\nASCQ: 0x%02x\n", sense.senseKey, sense.ASC, sense.ASCQ);
+    return -1;
+  }
+  printf("command succeeded\n");
+  unsigned char toc_data[805];
+  memset(toc_data, 0, 805);
+  printf("\nAttempting to read TOC...\n");
+  rc = scsi_read_toc(discreader, 0, 1, toc_data);
+  if (rc != 0) {
+    printf("Get TOC FAILED with %d. Getting sense...\n", rc);
+    struct scsi_sense_data sense;
+    int rc = scsi_request_sense(discreader, &sense);
+    if (rc != 0) {
+      printf("could not get sense data\n");
+      return -1;
+    }
+    printf("Got SENSE data:\nSENSE KEY: 0x%02x\nASC: 0x%02x\nASCQ: 0x%02x\n", sense.senseKey, sense.ASC, sense.ASCQ);
+    return -1;
+  }
+
+  printf("Dumping TOC Data...\r\n\r\n");
+  for (int i = 0; i < sizeof(toc_data); i++) {
+    //printf("%d : %02x : %c\n", i, toc_data[i], toc_data[i]);
+    printf("%c", toc_data[i]);
+  }
+  printf("\r\n\r\nDone.\n");
   return 0;
 }

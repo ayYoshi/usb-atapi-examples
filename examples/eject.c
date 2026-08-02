@@ -1,5 +1,5 @@
-#include "../include/atapi.h"
 #include "../include/usb.h"
+#include "../include/atapi.h"
 
 int main(int argc, char *argv[]) {
   libusb_device_handle *discreader = NULL;

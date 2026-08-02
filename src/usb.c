@@ -117,7 +117,7 @@ int usb_send_cbw(libusb_device_handle *handle, unsigned char *cbwcb, uint32_t dC
     return -127;
   }
   if (bytes_transferred != CBW_SIZE) {
-    printf("Host only send %d bytes (expected %d)\n", bytes_transferred, CBW_SIZE);
+    printf("Host only sent %d bytes (expected %d)\n", bytes_transferred, CBW_SIZE);
     return -127;
   }
   printf("Bulk Transfer OUT succeeded with %d bytes transferred\n", bytes_transferred);
