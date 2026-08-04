@@ -83,5 +83,29 @@ int main(int argc, char *argv[]) {
   }
   printf("\r\n\r\nDone.\n");
   scsi_TOC_pprint(toc_data);
+  unsigned char cdtext_data[1024 * 3];
+  memset(cdtext_data, 0, 1024 * 3);
+  char toc_str[1024];
+  toc_format = 0b0101;
+  printf("\nAttempting to read CD_TEXT with format %d...\n", toc_format);
+  rc = scsi_read_toc(discreader, toc_format, 1, cdtext_data);
+  if (rc != 0) {
+    printf("Get TOC FAILED with %d. Getting sense...\n", rc);
+    struct scsi_sense_data sense;
+    int rc = scsi_request_sense(discreader, &sense);
+    if (rc != 0) {
+      printf("could not get sense data\n");
+      return -1;
+    }
+    printf("Got SENSE data:\nSENSE KEY: 0x%02x\nASC: 0x%02x\nASCQ: 0x%02x\n", sense.senseKey, sense.ASC, sense.ASCQ);
+    return -1;
+  }
+
+  printf("Dumping CD_TEXT Data...\r\n\r\n");
+  for (int i = 0; i < sizeof(cdtext_data); i++) {
+    //printf("%d : %02x : %c\n", i, toc_data[i], toc_data[i]);
+    printf("%c", cdtext_data[i]);
+  }
+  printf("\r\n\r\nDone.\n");
   return 0;
 }

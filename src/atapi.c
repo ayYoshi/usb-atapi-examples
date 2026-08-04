@@ -308,3 +308,31 @@ void scsi_TOC_pprint(unsigned char *toc_data) {
     track_ptr += 8;
   }
 }
+void scsi_TOC_CDText_parse(unsigned char *toc_data, int num_tracks, char *cdtext_string) {
+  uint16_t data_length;
+  data_length = (toc_data[1] | (toc_data[0] << 8));
+  // text_p is set to the start of the first cd_text pack
+  unsigned char* text_pointer = toc_data + 4;
+  int track_count = 0;
+  while (track_count < num_tracks + 1) {
+    // for now we will not parse the first 4 bytes
+    toc_data += 4;
+    for (int i = 0; i < 12; i++) {
+      char s = *text_pointer;
+      if (s == '\0') {
+        track_count++;
+      }
+      *cdtext_string = s;
+      cdtext_string++;
+    }
+    // skip the last 2 bytes
+    toc_data += 2;
+  }
+}
+
+
+
+
+
+
+

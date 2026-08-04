@@ -44,3 +44,4 @@ void scsi_inquiry_pprint(unsigned char* inquiry_data);
 // Prints TOC Data in a readable format. Expected format is Format Field 0b00 and MSF bit disabled. Invalid/shortened TOC data may result in a segfault
 void scsi_TOC_pprint(unsigned char* toc_data);
 
+void scsi_TOC_CDText_parse(unsigned char *toc_data, int num_tracks, char *cdtext_string);
