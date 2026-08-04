@@ -183,8 +183,8 @@ int scsi_read_toc(libusb_device_handle *handle, uint8_t format,
   int retry = 0;
   uint32_t expected_tag;
   unsigned char cdb[12];
-  // Make sure format is not greater than 0b10
-  if (format > 0b10) {
+  // Make sure format is not greater than 0b1010
+  if (format > 0b1010) {
     printf("Invalid Format\n");
     return -1;
   }
