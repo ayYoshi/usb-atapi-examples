@@ -316,17 +316,19 @@ void scsi_TOC_CDText_parse(unsigned char *toc_data, int num_tracks, char *cdtext
   int track_count = 0;
   while (track_count < num_tracks + 1) {
     // for now we will not parse the first 4 bytes
-    toc_data += 4;
+    text_pointer += 4;
     for (int i = 0; i < 12; i++) {
-      char s = *text_pointer;
+      char s = *(text_pointer);
       if (s == '\0') {
         track_count++;
       }
+      printf("%p: %c (%d)\n", (text_pointer+i), s, s);
       *cdtext_string = s;
       cdtext_string++;
+      text_pointer++;
     }
     // skip the last 2 bytes
-    toc_data += 2;
+    text_pointer += 2;
   }
 }
 

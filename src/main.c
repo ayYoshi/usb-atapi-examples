@@ -107,5 +107,14 @@ int main(int argc, char *argv[]) {
     printf("%c", cdtext_data[i]);
   }
   printf("\r\n\r\nDone.\n");
+  scsi_TOC_CDText_parse(cdtext_data, 19, toc_str);
+  for (int i = 0; i < sizeof(toc_str); i++) {
+    char c = *(toc_str + i);
+    if (c == '\0') {
+      printf("\n");
+    } else {
+      printf("%c", c);
+    }
+  }
   return 0;
 }
