@@ -86,6 +86,7 @@ int main(int argc, char *argv[]) {
   unsigned char cdtext_data[1024 * 3];
   memset(cdtext_data, 0, 1024 * 3);
   char toc_str[1024];
+  memset(toc_str, 0, 1024);
   toc_format = 0b0101;
   printf("\nAttempting to read CD_TEXT with format %d...\n", toc_format);
   rc = scsi_read_toc(discreader, toc_format, 1, cdtext_data);

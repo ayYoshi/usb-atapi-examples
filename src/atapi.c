@@ -314,7 +314,7 @@ void scsi_TOC_CDText_parse(unsigned char *toc_data, int num_tracks, char *cdtext
   // text_p is set to the start of the first cd_text pack
   unsigned char* text_pointer = toc_data + 4;
   int track_count = 0;
-  while (track_count < num_tracks + 1) {
+  while (track_count < num_tracks + 2) {
     // for now we will not parse the first 4 bytes
     text_pointer += 4;
     for (int i = 0; i < 12; i++) {
