@@ -309,27 +309,30 @@ void scsi_TOC_pprint(unsigned char *toc_data) {
   }
 }
 void scsi_TOC_CDText_parse(unsigned char *toc_data, int num_tracks, char *cdtext_string) {
-  uint16_t data_length;
-  data_length = (toc_data[1] | (toc_data[0] << 8));
-  // text_p is set to the start of the first cd_text pack
-  unsigned char* text_pointer = toc_data + 4;
-  int track_count = 0;
-  while (track_count < num_tracks + 2) {
-    // for now we will not parse the first 4 bytes
-    text_pointer += 4;
-    for (int i = 0; i < 12; i++) {
-      char s = *(text_pointer);
-      if (s == '\0') {
-        track_count++;
-      }
-      printf("%p: %c (%d)\n", (text_pointer+i), s, s);
-      *cdtext_string = s;
-      cdtext_string++;
-      text_pointer++;
+  // get album name
+  char album_name[36];
+  memset(album_name, 0, 36);
+  unsigned char *text_pointer = (unsigned char *) toc_data;
+  // skip the header of TOC
+  text_pointer+=4;
+  // We will only read 3 chunks of album_name info
+  for (int i = 0; i < 3; i++) {
+    // Both of these conditions indicate there is no more album name info to parse
+    if ((text_pointer[0] != 0x80) || (text_pointer[1] != 0)) {
+      break;
     }
-    // skip the last 2 bytes
-    text_pointer += 2;
+    text_pointer+=4;
+    // Copy all 12 bytes of text_data into the album name
+    //memcpy(album_name + (i * 12), text_pointer+4, 12);
+    for (int j = 0; j < 12; j++) {
+      album_name[j + i*12] = *(text_pointer+j);
+    }
+    // ignore CRC bits and go to the next chunk
+    text_pointer += 14;
   }
+  // to be safe, we insert a null at the end of album_name
+  album_name[35] = '\0';
+  printf("Album Name: %s\n", album_name);
 }
 
 
