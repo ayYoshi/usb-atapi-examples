@@ -177,7 +177,7 @@ int scsi_inquiry(libusb_device_handle *handle, unsigned char *data) {
   return rc;
 }
 int scsi_read_toc(libusb_device_handle *handle, uint8_t format,
-                  uint8_t track_number, unsigned char *data) {
+                  uint8_t track_number, uint8_t msf, unsigned char *data) {
   int rc;
   int bytes_transferred;
   int retry = 0;
@@ -193,11 +193,15 @@ int scsi_read_toc(libusb_device_handle *handle, uint8_t format,
     printf("Track Number too large\n");
     return -1;
   }
+  if (msf > 1) {
+    printf("invalid msf\n");
+    return -1;
+  }
   memset(cdb, 0, 12);
   // Read TOC Opcode: 0x12
   cdb[0] = 0x43;
   // Set MSF to 0
-  cdb[1] = 0b00000000;
+  cdb[1] = 0 | (msf << 1);
   cdb[2] = format;
   cdb[6] = track_number;
   // To allocate 804 bytes, we must put the LSB in cdb[8] and MSB in cdb[7]
@@ -283,7 +287,7 @@ void scsi_inquiry_pprint(unsigned char *inquiry_data) {
   memcpy(product_rev, inquiry_data + 32, 4);
   printf("Product Revision: %s\n", product_rev);
 }
-void scsi_TOC_pprint(unsigned char *toc_data) {
+void scsi_TOC_pprint(unsigned char *toc_data, uint8_t msf) {
   printf("\n*** TOC DATA ***\n");
   uint16_t data_length;
   data_length = (toc_data[1] | (toc_data[0] << 8));
@@ -302,30 +306,41 @@ void scsi_TOC_pprint(unsigned char *toc_data) {
     printf("ADDR: 0x%02x\n", track_ptr[1] >> 4);
     printf("CONTROL: 0x%02x\n", track_ptr[1] & 0b00001111);
     // Track Address has the LSB at Byte 7 and MSB at Byte 4
-    uint32_t track_address = track_ptr[7] | (track_ptr[6] << 8) |
-                             (track_ptr[5] << 16) | (track_ptr[4] << 24);
-    printf("Track Address (LBA): %d\n\n", track_address);
+    if (msf) {
+      printf("Track Address (MSF): \n");
+      printf("Minute: %02d\n", track_ptr[5]);
+      printf("Second: %02d\n", track_ptr[6]);
+      printf("Frame: %02d\n", track_ptr[7]);
+
+    } else {
+      uint32_t track_address = track_ptr[7] | (track_ptr[6] << 8) |
+                               (track_ptr[5] << 16) | (track_ptr[4] << 24);
+      printf("Track Address (LBA): %d\n", track_address);
+    }
     track_ptr += 8;
+    printf("\n");
   }
 }
-void scsi_TOC_CDText_parse(unsigned char *toc_data, int num_tracks, char *cdtext_string) {
+void scsi_TOC_CDText_parse(unsigned char *toc_data, int num_tracks,
+                           char *cdtext_string) {
   // get album name
   char album_name[36];
   memset(album_name, 0, 36);
-  unsigned char *text_pointer = (unsigned char *) toc_data;
+  unsigned char *text_pointer = (unsigned char *)toc_data;
   // skip the header of TOC
-  text_pointer+=4;
+  text_pointer += 4;
   // We will only read 3 chunks of album_name info
   for (int i = 0; i < 3; i++) {
-    // Both of these conditions indicate there is no more album name info to parse
+    // Both of these conditions indicate there is no more album name info to
+    // parse
     if ((text_pointer[0] != 0x80) || (text_pointer[1] != 0)) {
       break;
     }
-    text_pointer+=4;
+    text_pointer += 4;
     // Copy all 12 bytes of text_data into the album name
-    //memcpy(album_name + (i * 12), text_pointer+4, 12);
+    // memcpy(album_name + (i * 12), text_pointer+4, 12);
     for (int j = 0; j < 12; j++) {
-      album_name[j + i*12] = *(text_pointer+j);
+      album_name[j + i * 12] = *(text_pointer + j);
     }
     // ignore CRC bits and go to the next chunk
     text_pointer += 14;
@@ -334,10 +349,3 @@ void scsi_TOC_CDText_parse(unsigned char *toc_data, int num_tracks, char *cdtext
   album_name[35] = '\0';
   printf("Album Name: %s\n", album_name);
 }
-
-
-
-
-
-
-

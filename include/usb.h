@@ -3,7 +3,6 @@
 #include <stdlib.h>
 
 // harcoded specific values for the CDROM device used for testing
-// 
 #define VENDOR_ID 0x13fd
 #define PRODUCT_ID 0x0840
 #define ENDPOINT_IN 0x81
