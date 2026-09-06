@@ -13,13 +13,10 @@ struct scsi_sense_data {
   uint8_t ASC;
   uint8_t ASCQ;
 };
-struct TOC_track_descriptor {
-  uint8_t sessionNumber;
-  uint8_t cntrl;
-  uint8_t track;
-  uint8_t MSF[3];
-  uint8_t zeroField;     // TODO: learn what a ZERO field is
-  uint8_t zeroField2[3]; // TODO: idk what this is
+struct scsi_msf {
+  uint8_t minute;
+  uint8_t second;
+  uint8_t frame;
 };
 
 /* SCSI COMMANDS */
@@ -43,6 +40,8 @@ int scsi_inquiry(libusb_device_handle *handle, unsigned char *data);
 // Read TOC of passed-in Track Number.
 int scsi_read_toc(libusb_device_handle *handle, uint8_t format,
                   uint8_t track_number, uint8_t msf, unsigned char *data);
+// sends the read_cd_msf command. Will only request one frame at a time. Sector type is hardcoded to 0b001 (CD-DA).
+int scsi_read_cd_msf(libusb_device_handle *handle, struct scsi_msf addr, uint8_t flag_bits, uint8_t subchannel_selection, unsigned char *data);
 
 // Prints inquiry data in a readable format. inquiry_data must be at least 95
 // bytes long
