@@ -2,6 +2,12 @@
 #include "../include/atapi.h"
 #include "../include/usb.h"
 
+struct scsi_msf addr = {
+    .minute = 0,
+    .second = 2,
+    .frame = 0,
+};
+
 int main(int argc, char *argv[]) {
   libusb_device_handle *discreader = NULL;
   if (libusb_init(NULL) != 0) {
@@ -41,7 +47,8 @@ int main(int argc, char *argv[]) {
       printf("could not get sense data\n");
       return -1;
     }
-    printf("Got SENSE data:\nSENSE KEY: 0x%02x\nASC: 0x%02x\nASCQ: 0x%02x\n", sense.senseKey, sense.ASC, sense.ASCQ);
+    printf("Got SENSE data:\nSENSE KEY: 0x%02x\nASC: 0x%02x\nASCQ: 0x%02x\n",
+           sense.senseKey, sense.ASC, sense.ASCQ);
     return -1;
   }
   scsi_inquiry_pprint(inq_data);
@@ -52,35 +59,19 @@ int main(int argc, char *argv[]) {
     struct scsi_sense_data sense;
     int rc = scsi_request_sense(discreader, &sense);
     if (rc != 0) {
-      printf("command failed with:\nSENSE KEY: %d\nASC: %d\nASCQ: %d\n", sense.senseKey, sense.ASC, sense.ASCQ);
+      printf("command failed with:\nSENSE KEY: %d\nASC: %d\nASCQ: %d\n",
+             sense.senseKey, sense.ASC, sense.ASCQ);
       return -1;
     }
-    printf("command success with:\nSENSE KEY: 0x%02x\nASC: 0x%02x\nASCQ: 0x%02x\n", sense.senseKey, sense.ASC, sense.ASCQ);
+    printf(
+        "command success with:\nSENSE KEY: 0x%02x\nASC: 0x%02x\nASCQ: 0x%02x\n",
+        sense.senseKey, sense.ASC, sense.ASCQ);
     return -1;
   }
   printf("command succeeded\n");
   unsigned char toc_data[805];
   memset(toc_data, 0, 805);
   int toc_format = 0b00;
-  printf("\nAttempting to read TOC (LBA) with format %d...\n", toc_format);
-  rc = scsi_read_toc(discreader, toc_format, 1, 0, toc_data);
-  if (rc != 0) {
-    printf("Get TOC FAILED with %d. Getting sense...\n", rc);
-    struct scsi_sense_data sense;
-    int rc = scsi_request_sense(discreader, &sense);
-    if (rc != 0) {
-      printf("could not get sense data\n");
-      return -1;
-    }
-    printf("Got SENSE data:\nSENSE KEY: 0x%02x\nASC: 0x%02x\nASCQ: 0x%02x\n", sense.senseKey, sense.ASC, sense.ASCQ);
-    return -1;
-  }
-
-  printf("Dumping TOC Data...\r\n\r\n");
-  for (int i = 0; i < sizeof(toc_data); i++) {
-    //printf("%d : %02x : %c\n", i, toc_data[i], toc_data[i]);
-    printf("%c", toc_data[i]);
-  }
   printf("\r\n\r\nDone.\n");
   scsi_TOC_pprint(toc_data, 0);
   printf("\nAttempting to read TOC (MSF) with format %d...\n", toc_format);
@@ -93,25 +84,17 @@ int main(int argc, char *argv[]) {
       printf("could not get sense data\n");
       return -1;
     }
-    printf("Got SENSE data:\nSENSE KEY: 0x%02x\nASC: 0x%02x\nASCQ: 0x%02x\n", sense.senseKey, sense.ASC, sense.ASCQ);
+    printf("Got SENSE data:\nSENSE KEY: 0x%02x\nASC: 0x%02x\nASCQ: 0x%02x\n",
+           sense.senseKey, sense.ASC, sense.ASCQ);
     return -1;
   }
 
-  printf("Dumping TOC Data...\r\n\r\n");
-  for (int i = 0; i < sizeof(toc_data); i++) {
-    //printf("%d : %02x : %c\n", i, toc_data[i], toc_data[i]);
-    printf("%c", toc_data[i]);
-  }
   printf("\r\n\r\nDone.\n");
   scsi_TOC_pprint(toc_data, 1);
   printf("Get CD data\n");
 
   unsigned char data_buf[3000];
   memset(data_buf, 0, 3000);
-  struct scsi_msf addr;
-  addr.minute = 0;
-  addr.frame = 0;
-  addr.second = 2;
   scsi_read_cd_msf(discreader, addr, 0x10, 0b010, data_buf);
   if (rc != 0) {
     printf("READ CD FAILED with %d. Getting sense...\n", rc);
@@ -121,13 +104,32 @@ int main(int argc, char *argv[]) {
       printf("could not get sense data\n");
       return -1;
     }
-    printf("Got SENSE data:\nSENSE KEY: 0x%02x\nASC: 0x%02x\nASCQ: 0x%02x\n", sense.senseKey, sense.ASC, sense.ASCQ);
+    printf("Got SENSE data:\nSENSE KEY: 0x%02x\nASC: 0x%02x\nASCQ: 0x%02x\n",
+           sense.senseKey, sense.ASC, sense.ASCQ);
     return -1;
   }
   printf("Data Dump:\n");
   for (int i = 0; i < 3000; i++) {
     printf("%d: 0x%02x (%c)\n", i, data_buf[i], data_buf[i]);
   }
+  // Request 75 frames of MSF data
+  for (int i = 0; i < 75; i++) {
+    printf("Getting %d:%d:%d\n", addr.minute, addr.second, addr.frame);
+    scsi_read_cd_msf(discreader, addr, 0x10, 0b010, data_buf);
+    if (rc != 0) {
+      printf("READ CD FAILED with %d. Getting sense...\n", rc);
+      struct scsi_sense_data sense;
+      int rc = scsi_request_sense(discreader, &sense);
+      if (rc != 0) {
+        printf("could not get sense data\n");
+        return -1;
+      }
+      printf("Got SENSE data:\nSENSE KEY: 0x%02x\nASC: 0x%02x\nASCQ: 0x%02x\n",
+             sense.senseKey, sense.ASC, sense.ASCQ);
+      return -1;
+    }
+  }
+
   /*
   unsigned char cdtext_data[1024 * 3];
   memset(cdtext_data, 0, 1024 * 3);
@@ -144,8 +146,8 @@ int main(int argc, char *argv[]) {
       printf("could not get sense data\n");
       return -1;
     }
-    printf("Got SENSE data:\nSENSE KEY: 0x%02x\nASC: 0x%02x\nASCQ: 0x%02x\n", sense.senseKey, sense.ASC, sense.ASCQ);
-    return -1;
+    printf("Got SENSE data:\nSENSE KEY: 0x%02x\nASC: 0x%02x\nASCQ: 0x%02x\n",
+  sense.senseKey, sense.ASC, sense.ASCQ); return -1;
   }
 
   printf("Dumping CD_TEXT Data...\r\n\r\n");

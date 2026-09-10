@@ -429,3 +429,14 @@ void scsi_TOC_CDText_parse(unsigned char *toc_data, int num_tracks,
   album_name[35] = '\0';
   printf("Album Name: %s\n", album_name);
 }
+void increment_msf(struct scsi_msf *addr) {
+  addr->frame++;
+  if (addr->frame > 74) {
+    addr->frame = 0;
+    addr->second++;
+  }
+  if (addr->second > 59) {
+    addr->second = 0;
+    addr->minute++;
+  }
+}
