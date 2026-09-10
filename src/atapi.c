@@ -259,7 +259,7 @@ int scsi_read_cd_msf(libusb_device_handle *handle, struct scsi_msf addr,
   }
   if ((addr.frame > 74) || (addr.second > 59) || (addr.minute > 99)) {
     printf("Invalid MSF address\n");
-    return 0;
+    return -1;
   }
   memset(cdb, 0, 12);
   cdb[0] = 0xB9; // opcode for read_cd_msf
