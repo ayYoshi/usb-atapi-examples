@@ -93,8 +93,8 @@ int scsi_prevent_allow_medium_removal(libusb_device_handle *handle,
   }
   return rc;
 }
-int scsi_start_stop_unit(libusb_device_handle *handle, uint8_t immed,
-                         uint8_t LoEj, uint8_t start) {
+int scsi_start_stop_unit(libusb_device_handle *handle, uint8_t power_condition,
+                         uint8_t immed, uint8_t LoEj, uint8_t start) {
   int rc;
   uint32_t expected_tag;
   unsigned char cdb[12];
@@ -116,6 +116,8 @@ int scsi_start_stop_unit(libusb_device_handle *handle, uint8_t immed,
   cdb[1] = immed;
   // set bit 0 to START and bit 1 to LoEj
   cdb[4] = ((start) | (LoEj << 1));
+  // set up Power Condition
+  cdb[4] |= (power_condition << 4);
   if (usb_send_cbw(handle, cdb, 0, &expected_tag) != 0) {
     printf("couldn't send command to USB device");
     return -1;
@@ -293,8 +295,8 @@ int scsi_read_cd_msf(libusb_device_handle *handle, struct scsi_msf addr,
     printf("couldn't send command to USB device");
     return -1;
   }
-  rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)data,
-                            3000, &bytes_transferred, 5000);
+  rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)data, 3000,
+                            &bytes_transferred, 5000);
   while ((rc == LIBUSB_ERROR_PIPE) && (retry < RETRY_MAX)) {
     printf("clearing halt...\n");
     int rc2 = libusb_clear_halt(handle, ENDPOINT_IN);
@@ -302,8 +304,8 @@ int scsi_read_cd_msf(libusb_device_handle *handle, struct scsi_msf addr,
       printf("stall clear failed with %d\n", rc2);
       return -1;
     }
-    rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)data,
-                              3000, &bytes_transferred, 5000);
+    rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)data, 3000,
+                              &bytes_transferred, 5000);
     retry++;
   }
   if (rc != 0) {
@@ -314,8 +316,7 @@ int scsi_read_cd_msf(libusb_device_handle *handle, struct scsi_msf addr,
   if (bytes_transferred != 3000) {
     // We log the error, but do not stop execution as different drives may send
     // different INQUIRY lengths
-    printf("Host only send %d bytes (expected %d)\n", bytes_transferred,
-           3000);
+    printf("Host only send %d bytes (expected %d)\n", bytes_transferred, 3000);
   }
   printf("Bulk Transfer IN succeeded with %d bytes transferred\n",
          bytes_transferred);
