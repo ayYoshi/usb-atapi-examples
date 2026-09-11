@@ -246,6 +246,65 @@ int scsi_read_toc(libusb_device_handle *handle, uint8_t format,
   }
   return rc;
 }
+int scsi_read_cd(libusb_device_handle *handle, uint32_t lba,
+                     uint8_t flag_bits, uint8_t subchannel_selection,
+                     unsigned char *data) {
+  int rc;
+  int bytes_transferred;
+  int retry = 0;
+  uint32_t expected_tag;
+  unsigned char cdb[12];
+
+  if (subchannel_selection >= 0b111) {
+    printf("Invalid subchannel_selection\n");
+    return -1;
+  }
+  /*
+      uint32_t track_address = track_ptr[7] | (track_ptr[6] << 8) |
+                               (track_ptr[5] << 16) | (track_ptr[4] << 24);
+                               */
+
+
+  cdb[9] = flag_bits;
+  cdb[10] = subchannel_selection;
+  if (usb_send_cbw(handle, cdb, 3000, &expected_tag) != 0) {
+    printf("couldn't send command to USB device");
+    return -1;
+  }
+  rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)data, 3000,
+                            &bytes_transferred, 5000);
+  while ((rc == LIBUSB_ERROR_PIPE) && (retry < RETRY_MAX)) {
+    printf("clearing halt...\n");
+    int rc2 = libusb_clear_halt(handle, ENDPOINT_IN);
+    if (rc2 != 0) {
+      printf("stall clear failed with %d\n", rc2);
+      return -1;
+    }
+    rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)data, 3000,
+                              &bytes_transferred, 5000);
+    retry++;
+  }
+  if (rc != 0) {
+    printf("Bulk Transfer IN failed with %s and %d bytes transferred\n",
+           libusb_error_name(rc), bytes_transferred);
+    return -1;
+  }
+  if (bytes_transferred != 3000) {
+    // We log the error, but do not stop execution as different drives may send
+    // different INQUIRY lengths
+    printf("Host only send %d bytes (expected %d)\n", bytes_transferred, 3000);
+  }
+  printf("Bulk Transfer IN succeeded with %d bytes transferred\n",
+         bytes_transferred);
+  rc = usb_get_csw(handle, &expected_tag);
+  if (rc < 0) {
+    printf("invalid command status wrapper\n");
+    return -1;
+  }
+  return rc;
+
+
+}
 int scsi_read_cd_msf(libusb_device_handle *handle, struct scsi_msf addr,
                      uint8_t flag_bits, uint8_t subchannel_selection,
                      unsigned char *data) {
