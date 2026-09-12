@@ -15,8 +15,23 @@ int main(int argc, char *argv[]) {
     printf("libusb init error\n");
     return 1;
   }
-
-  usb_device_init(discreader);
+  printf("Attempting to open device with VID 0x%04x and PID 0x%04x\n",
+         VENDOR_ID, PRODUCT_ID);
+  discreader = libusb_open_device_with_vid_pid(NULL, VENDOR_ID, PRODUCT_ID);
+  if (discreader == NULL) {
+    printf("Could not open device\n");
+    return 1;
+  }
+  int kernal = libusb_kernel_driver_active(discreader, 0);
+  if (kernal) {
+    printf("USB device is being used by kernal. attempting to detach...\n");
+    if (libusb_detach_kernel_driver(discreader, 0) != 0) {
+      printf("Driver failed to detach\n");
+      return 1;
+    }
+    printf("Detached without issue\n");
+  }
+  printf("All basic checks passed\n");
 
   usb_bulk_storage_reset(discreader);
 

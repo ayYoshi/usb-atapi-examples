@@ -461,6 +461,9 @@ void scsi_TOC_pprint(unsigned char *toc_data, uint8_t msf) {
     printf("\n");
   }
 }
+void sense_handler(libusb_device_handle *handle) {
+
+}
 void scsi_TOC_CDText_parse(unsigned char *toc_data, int num_tracks,
                            char *cdtext_string) {
   // get album name

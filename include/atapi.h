@@ -57,5 +57,8 @@ void scsi_TOC_pprint(unsigned char *toc_data, uint8_t msf);
 // Load Album Info
 void scsi_TOC_CDText_parse(unsigned char *toc_data, int num_tracks,
                            char *cdtext_string);
+
+// Get sense if command fails
+void sense_handler(libusb_device_handle *handle);
 // Increment MSF frame
 void increment_msf(struct scsi_msf *addr);

@@ -4,24 +4,7 @@
 
 uint32_t tag = 0;
 
-inline int usb_device_init(libusb_device_handle *handle) {
-  printf("Attempting to open device with VID 0x%04x and PID 0x%04x\n",
-         VENDOR_ID, PRODUCT_ID);
-  handle = libusb_open_device_with_vid_pid(NULL, VENDOR_ID, PRODUCT_ID);
-  if (handle == NULL) {
-    printf("Could not open device\n");
-    return 1;
-  }
-  int kernal = libusb_kernel_driver_active(handle, 0);
-  if (kernal) {
-    printf("USB device is being used by kernal. attempting to detach...\n");
-    if (libusb_detach_kernel_driver(handle, 0) != 0) {
-      printf("Driver failed to detach\n");
-      return 1;
-    }
-    printf("Detached without issue\n");
-  }
-  printf("All basic checks passed\n");
+int usb_device_init(libusb_device_handle *handle) {
   return 0;
 }
 int usb_bulk_storage_reset(libusb_device_handle *handle) {
