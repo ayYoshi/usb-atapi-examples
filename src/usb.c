@@ -4,11 +4,7 @@
 
 uint32_t tag = 0;
 
-int usb_device_init(libusb_device_handle *handle) {
-  if (libusb_init(NULL) != 0) {
-    printf("libusb init error\n");
-    return 1;
-  }
+inline int usb_device_init(libusb_device_handle *handle) {
   printf("Attempting to open device with VID 0x%04x and PID 0x%04x\n",
          VENDOR_ID, PRODUCT_ID);
   handle = libusb_open_device_with_vid_pid(NULL, VENDOR_ID, PRODUCT_ID);

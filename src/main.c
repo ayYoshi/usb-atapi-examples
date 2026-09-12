@@ -11,6 +11,12 @@ struct scsi_msf addr = {
 
 int main(int argc, char *argv[]) {
   libusb_device_handle *discreader = NULL;
+  if (libusb_init(NULL) != 0) {
+    printf("libusb init error\n");
+    return 1;
+  }
+
+  usb_device_init(discreader);
 
   usb_bulk_storage_reset(discreader);
 
@@ -34,7 +40,7 @@ int main(int argc, char *argv[]) {
   }
   scsi_inquiry_pprint(inq_data);
   // Start spinning the disc and read TOC
-  rc = scsi_start_stop_unit(discreader, 0, 0, 0, 1);
+  rc = scsi_start_stop_unit(discreader, 0, 0, 1, 0);
   if (rc != 0) {
     printf("command failed with %d\n. getting sense...", rc);
     struct scsi_sense_data sense;
