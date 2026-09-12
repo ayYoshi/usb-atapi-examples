@@ -42,3 +42,5 @@ int usb_bulk_storage_reset(libusb_device_handle *handle);
 int usb_get_csw(libusb_device_handle *handle, uint32_t *expected_tag);
 // sends CBW to device. size of cbwcb will always be assumed to be 12. returns -1 for USB transfer failure
 int usb_send_cbw(libusb_device_handle *handle, unsigned char *cbwcb, uint32_t dCBWDataTransferLength, uint32_t *returned_tag);
+// Initialize and run basic tests for USB device
+int usb_device_init(libusb_device_handle *handle);
