@@ -246,9 +246,62 @@ int scsi_read_toc(libusb_device_handle *handle, uint8_t format,
   }
   return rc;
 }
-int scsi_read_cd(libusb_device_handle *handle, uint32_t lba,
-                     uint8_t flag_bits, uint8_t subchannel_selection,
-                     unsigned char *data) {
+int scsi_get_event_status_notification(libusb_device_handle *handle,
+                                       uint8_t immed, uint8_t request_bits,
+                                       uint16_t alloc_length,
+                                       unsigned char *data) {
+  int rc;
+  int bytes_transferred;
+  int retry = 0;
+  uint32_t expected_tag;
+  unsigned char cdb[12];
+
+  cdb[0] = 0x4a;
+
+  cdb[1] = immed;
+  cdb[4] = request_bits;
+
+  cdb[7] = (alloc_length >> 8);
+  cdb[8] = (alloc_length & 0x00ff);
+
+  if (usb_send_cbw(handle, cdb, alloc_length, &expected_tag) != 0) {
+    printf("couldn't send command to USB device");
+    return -1;
+  }
+  rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)data,
+                            alloc_length, &bytes_transferred, 5000);
+  while ((rc == LIBUSB_ERROR_PIPE) && (retry < RETRY_MAX)) {
+    printf("clearing halt...\n");
+    int rc2 = libusb_clear_halt(handle, ENDPOINT_IN);
+    if (rc2 != 0) {
+      printf("stall clear failed with %d\n", rc2);
+      return -1;
+    }
+    rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)data,
+                              alloc_length, &bytes_transferred, 5000);
+    retry++;
+  }
+  if (rc != 0) {
+    printf("Bulk Transfer IN failed with %s and %d bytes transferred\n",
+           libusb_error_name(rc), bytes_transferred);
+    return -1;
+  }
+  if (bytes_transferred != alloc_length) {
+    printf("Host only send %d bytes (expected %d)\n", bytes_transferred,
+           alloc_length);
+    return -1;
+  }
+  printf("Bulk Transfer IN succeeded with %d bytes transferred\n",
+         bytes_transferred);
+  rc = usb_get_csw(handle, &expected_tag);
+  if (rc < 0) {
+    printf("invalid command status wrapper\n");
+    return -1;
+  }
+  return rc;
+}
+int scsi_read_cd(libusb_device_handle *handle, uint32_t lba, uint8_t flag_bits,
+                 uint8_t subchannel_selection, unsigned char *data) {
   int rc;
   int bytes_transferred;
   int retry = 0;
@@ -263,7 +316,6 @@ int scsi_read_cd(libusb_device_handle *handle, uint32_t lba,
       uint32_t track_address = track_ptr[7] | (track_ptr[6] << 8) |
                                (track_ptr[5] << 16) | (track_ptr[4] << 24);
                                */
-
 
   cdb[9] = flag_bits;
   cdb[10] = subchannel_selection;
@@ -302,8 +354,6 @@ int scsi_read_cd(libusb_device_handle *handle, uint32_t lba,
     return -1;
   }
   return rc;
-
-
 }
 int scsi_read_cd_msf(libusb_device_handle *handle, struct scsi_msf addr,
                      uint8_t flag_bits, uint8_t subchannel_selection,
@@ -461,9 +511,7 @@ void scsi_TOC_pprint(unsigned char *toc_data, uint8_t msf) {
     printf("\n");
   }
 }
-void sense_handler(libusb_device_handle *handle) {
-
-}
+void sense_handler(libusb_device_handle *handle) {}
 void scsi_TOC_CDText_parse(unsigned char *toc_data, int num_tracks,
                            char *cdtext_string) {
   // get album name

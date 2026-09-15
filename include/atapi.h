@@ -47,6 +47,10 @@ int scsi_read_cd_msf(libusb_device_handle *handle, struct scsi_msf addr,
                      uint8_t flag_bits, uint8_t subchannel_selection,
                      unsigned char *data);
 
+// sends the scsi_get_event_status_notification command.
+// data buffer will be assumed to have enough space to hold the data
+int scsi_get_event_status_notification(libusb_device_handle *handle, uint8_t immed, uint8_t request_bits, uint16_t alloc_length, unsigned char *data);
+
 // Prints inquiry data in a readable format. inquiry_data must be at least 95
 // bytes long
 void scsi_inquiry_pprint(unsigned char *inquiry_data);
