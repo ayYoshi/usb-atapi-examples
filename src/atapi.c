@@ -574,6 +574,13 @@ void scsi_event_notif_pprint(unsigned char *event_data, int length) {
       return;
       break;
   }
+  event_data += 4; // set pointer to first return field
+  while ((bytes_processed < headers_len) && (bytes_processed < length)) {
+    for (int i = 0; i < 4; i++) {
+      printf("Byte %d: %02x\n", i+1, *(event_data+0));
+    }
+
+  }
 
 }
 void increment_msf(struct scsi_msf *addr) {
