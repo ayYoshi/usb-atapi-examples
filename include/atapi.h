@@ -58,6 +58,8 @@ void scsi_inquiry_pprint(unsigned char *inquiry_data);
 // If TOC read with MSF format, set MSF flag. Invalid/shortened TOC data may
 // result in a segfault
 void scsi_TOC_pprint(unsigned char *toc_data, uint8_t msf);
+// Prints event status headers in a readable way
+void scsi_event_notif_pprint(unsigned char *event_data, int length);
 // Load Album Info
 void scsi_TOC_CDText_parse(unsigned char *toc_data, int num_tracks,
                            char *cdtext_string);
