@@ -55,7 +55,8 @@ int main(int argc, char *argv[]) {
   }
   scsi_inquiry_pprint(inq_data);
   // Start spinning the disc and read TOC
-  rc = scsi_start_stop_unit(discreader, 0, 0, 1, 0);
+  printf("Sending Start/Stop Unit...\n");
+  //rc = scsi_start_stop_unit(discreader, 0, 0, 1, 0);
   if (rc != 0) {
     printf("command failed with %d\n. getting sense...", rc);
     struct scsi_sense_data sense;
@@ -70,6 +71,29 @@ int main(int argc, char *argv[]) {
         sense.senseKey, sense.ASC, sense.ASCQ);
     return -1;
   }
-
+  printf("Done.\nSending Event Status......\n");
+  int power_data_len = 8;
+  char power_data[power_data_len];
+  rc = scsi_get_event_status_notification(discreader, 1, 0 | (1<<2), 
+      power_data_len, power_data);
+  if (rc != 0) {
+    printf("command failed with %d\n. getting sense...", rc);
+    struct scsi_sense_data sense;
+    int rc = scsi_request_sense(discreader, &sense);
+    if (rc != 0) {
+      printf("command failed with:\nSENSE KEY: %d\nASC: %d\nASCQ: %d\n",
+             sense.senseKey, sense.ASC, sense.ASCQ);
+      return -1;
+    }
+    printf(
+        "command success with:\nSENSE KEY: 0x%02x\nASC: 0x%02x\nASCQ: 0x%02x\n",
+        sense.senseKey, sense.ASC, sense.ASCQ);
+    return -1;
+  }
+  printf("power data:\n");
+  for (int i = 0; i < power_data_len; i++) {
+    printf("%d: %02x\n", i, power_data[i]);
+  }
+  //scsi_event_notif_pprint(power_data, power_data_len);
   return 0;
 }

@@ -264,6 +264,8 @@ int scsi_get_event_status_notification(libusb_device_handle *handle,
   cdb[7] = (alloc_length >> 8);
   cdb[8] = (alloc_length & 0x00ff);
 
+  printf("m%d:l%d", cdb[7], cdb[8]);
+
   if (usb_send_cbw(handle, cdb, alloc_length, &expected_tag) != 0) {
     printf("couldn't send command to USB device");
     return -1;
