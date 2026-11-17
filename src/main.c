@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
   printf("Done\n");
   // Read TOC with forms 0->2
   printf("Opening %s...\n", file_name);
-  FILE* logfile = fopen(file_name, "r");
+  FILE* logfile = fopen(file_name, "w+");
   if (logfile == NULL) {
     printf("Could Not Open File\n");
     perror(file_name);
@@ -66,18 +66,24 @@ int main(int argc, char *argv[]) {
   }
   printf("Done\n");
   for (uint8_t toc_form = 0; toc_form < 3; toc_form++) {
+    size_t bytes_read = 0;
     printf("Reading TOC Form %d... ", toc_form);
     fprintf(logfile, "\r\nSTART TOC FORM %d\r\n", toc_form);
     unsigned char data[804];
     // read toc with toc form, LBA addressing and at track 0
-    if (scsi_read_toc(discreader, toc_form, 0, 0, data) != 0) {
+    if (scsi_read_toc(discreader, toc_form, 0, 0, &bytes_read, data) != 0) {
       printf("Could not read TOC form %d\n", toc_form);
       sense_handler(discreader);
       fclose(logfile);
       libusb_close(discreader);
       return -1;
     }
-    fprintf(logfile, "%s", data);
+    printf("Read %lu bytes\n", bytes_read);
+    if(fwrite(data, sizeof(unsigned char), bytes_read, logfile) != bytes_read) {
+      printf("Could not write to file on TOC FORM %d\n", toc_form);
+      perror(file_name);
+      return -1;
+    }
     fprintf(logfile, "\r\nEND TOC FORM %d\r\n", toc_form);
     printf("Done.\n");
   }

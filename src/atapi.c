@@ -179,7 +179,7 @@ int scsi_inquiry(libusb_device_handle *handle, unsigned char *data) {
   return rc;
 }
 int scsi_read_toc(libusb_device_handle *handle, uint8_t format,
-                  uint8_t track_number, uint8_t msf, unsigned char *data) {
+                  uint8_t track_number, uint8_t msf, size_t *bytes_read, unsigned char *data) {
   int rc;
   int bytes_transferred;
   int retry = 0;
@@ -244,6 +244,7 @@ int scsi_read_toc(libusb_device_handle *handle, uint8_t format,
     printf("invalid command status wrapper\n");
     return -1;
   }
+  *bytes_read = bytes_transferred;
   return rc;
 }
 int scsi_get_event_status_notification(libusb_device_handle *handle,

@@ -38,9 +38,9 @@ int scsi_start_stop_unit(libusb_device_handle *handle, uint8_t power_condition,
 // requests 95 bytes of Inquiry data. The array of data passed in is expected
 // to be 95 bytes of length. Inquiry valid if RC is 0
 int scsi_inquiry(libusb_device_handle *handle, unsigned char *data);
-// Read TOC of passed-in Track Number.
+// Read TOC of passed-in Track Number. Passes through the number of bytes read
 int scsi_read_toc(libusb_device_handle *handle, uint8_t format,
-                  uint8_t track_number, uint8_t msf, unsigned char *data);
+                  uint8_t track_number, uint8_t msf, size_t *bytes_read, unsigned char *data);
 // sends the read_cd_msf command. Will only request one frame at a time.
 // Sector type is hardcoded to 0b001 (CD-DA).
 int scsi_read_cd_msf(libusb_device_handle *handle, struct scsi_msf addr,
