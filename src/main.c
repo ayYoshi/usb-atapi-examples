@@ -1,6 +1,7 @@
 
 #include "../include/atapi.h"
 #include "../include/usb.h"
+#include <libusb-1.0/libusb.h>
 
 struct scsi_msf addr = {
     .minute = 0,
@@ -47,20 +48,33 @@ int main(int argc, char *argv[]) {
     return -1;
   }
   scsi_inquiry_pprint(inq_data);
+  // Start the disc
+  printf("Spinning up disc...\n");
+  if (scsi_start_stop_unit(discreader, 0, 0, 0, 1) != 0) {
+    sense_handler(discreader);
+    return -1;
+
+  }
+  printf("Done\n");
   // Read TOC with forms 0->2
+  printf("Opening %s...\n", file_name);
   FILE* logfile = fopen(file_name, "r");
   if (logfile == NULL) {
     printf("Could Not Open File\n");
     perror(file_name);
     return -1;
   }
+  printf("Done\n");
   for (uint8_t toc_form = 0; toc_form < 3; toc_form++) {
     printf("Reading TOC Form %d... ", toc_form);
     fprintf(logfile, "\r\nSTART TOC FORM %d\r\n", toc_form);
     unsigned char data[804];
+    // read toc with toc form, LBA addressing and at track 0
     if (scsi_read_toc(discreader, toc_form, 0, 0, data) != 0) {
+      printf("Could not read TOC form %d\n", toc_form);
       sense_handler(discreader);
       fclose(logfile);
+      libusb_close(discreader);
       return -1;
     }
     fprintf(logfile, "%s", data);
@@ -70,5 +84,6 @@ int main(int argc, char *argv[]) {
   printf("Dumped TOC Data without issue\n");
   fflush(logfile);
   fclose(logfile);
+  libusb_close(discreader);
   return 0;
 }
