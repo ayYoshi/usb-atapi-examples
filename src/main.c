@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
     return -1;
   }
   printf("Done\n");
-  for (uint8_t toc_form = 0; toc_form < 3; toc_form++) {
+  for (uint8_t toc_form = 0; toc_form < 5; toc_form++) {
     size_t bytes_read = 0;
     printf("Reading TOC Form %d... ", toc_form);
     fprintf(logfile, "\r\nSTART TOC FORM %d\r\n", toc_form);
