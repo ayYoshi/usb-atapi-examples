@@ -51,6 +51,11 @@ int scsi_read_cd_msf(libusb_device_handle *handle, struct scsi_msf addr,
 // data buffer will be assumed to have enough space to hold the data
 int scsi_get_event_status_notification(libusb_device_handle *handle, uint8_t immed, uint8_t request_bits, uint16_t alloc_length, unsigned char *data);
 
+// Request sense data following a failed command. Displays the Sense Key, ASC, and ASCQ
+// Note: Will NOT Terminate the main program
+void sense_handler(libusb_device_handle *handle);
+
+
 // Prints inquiry data in a readable format. inquiry_data must be at least 95
 // bytes long
 void scsi_inquiry_pprint(unsigned char *inquiry_data);
@@ -68,3 +73,4 @@ void scsi_TOC_CDText_parse(unsigned char *toc_data, int num_tracks,
 void sense_handler(libusb_device_handle *handle);
 // Increment MSF frame
 void increment_msf(struct scsi_msf *addr);
+

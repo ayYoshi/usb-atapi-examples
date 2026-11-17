@@ -513,7 +513,16 @@ void scsi_TOC_pprint(unsigned char *toc_data, uint8_t msf) {
     printf("\n");
   }
 }
-void sense_handler(libusb_device_handle *handle) {}
+void sense_handler(libusb_device_handle *handle) {
+  printf("SCSI Command FAILED. Getting Sense...\n");
+  struct scsi_sense_data sense;
+  int rc = scsi_request_sense(handle, &sense);
+  if (rc != 0) {
+    printf("could not get sense data\n");
+  }
+  printf("Got SENSE data:\nSENSE KEY: 0x%02x\nASC: 0x%02x\nASCQ: 0x%02x\n",
+         sense.senseKey, sense.ASC, sense.ASCQ);
+}
 void scsi_TOC_CDText_parse(unsigned char *toc_data, int num_tracks,
                            char *cdtext_string) {
   // get album name
@@ -552,38 +561,36 @@ void scsi_event_notif_pprint(unsigned char *event_data, int length) {
   }
   uint8_t notif_class = event_data[2] & 0b111;
   printf("Event Type: ");
-  switch(notif_class) {
-    case 0b001:
-      printf("Operational Change Request");
-      break;
-    case 0b010:
-      printf("Power Management");
-      break;
-    case 0b011:
-      printf("External Request");
-      break;
-    case 0b100:
-      printf("Media");
-      break;
-    case 0b101:
-      printf("Multiple Initiators");
-      break;
-    case 0b110:
-      printf("Device Busy");
-      break;
-    default:
-      printf("NOT SUPPORTED\n");
-      return;
-      break;
+  switch (notif_class) {
+  case 0b001:
+    printf("Operational Change Request");
+    break;
+  case 0b010:
+    printf("Power Management");
+    break;
+  case 0b011:
+    printf("External Request");
+    break;
+  case 0b100:
+    printf("Media");
+    break;
+  case 0b101:
+    printf("Multiple Initiators");
+    break;
+  case 0b110:
+    printf("Device Busy");
+    break;
+  default:
+    printf("NOT SUPPORTED\n");
+    return;
+    break;
   }
   event_data += 4; // set pointer to first return field
   while ((bytes_processed < headers_len) && (bytes_processed < length)) {
     for (int i = 0; i < 4; i++) {
-      printf("Byte %d: %02x\n", i+1, *(event_data+0));
+      printf("Byte %d: %02x\n", i + 1, *(event_data + 0));
     }
-
   }
-
 }
 void increment_msf(struct scsi_msf *addr) {
   addr->frame++;

@@ -8,6 +8,7 @@ struct scsi_msf addr = {
     .frame = 0,
 };
 
+const char *file_name = "log.txt";
 
 int main(int argc, char *argv[]) {
   libusb_device_handle *discreader = NULL;
@@ -42,58 +43,32 @@ int main(int argc, char *argv[]) {
   printf("Sending Inquiry Command...\n");
   int rc = scsi_inquiry(discreader, inq_data);
   if (rc != 0) {
-    printf("Get Inquiry FAILED with %d. Getting sense...\n", rc);
-    struct scsi_sense_data sense;
-    int rc = scsi_request_sense(discreader, &sense);
-    if (rc != 0) {
-      printf("could not get sense data\n");
-      return -1;
-    }
-    printf("Got SENSE data:\nSENSE KEY: 0x%02x\nASC: 0x%02x\nASCQ: 0x%02x\n",
-           sense.senseKey, sense.ASC, sense.ASCQ);
+    sense_handler(discreader);
     return -1;
   }
   scsi_inquiry_pprint(inq_data);
-  // Start spinning the disc and read TOC
-  printf("Sending Start/Stop Unit...\n");
-  //rc = scsi_start_stop_unit(discreader, 0, 0, 1, 0);
-  if (rc != 0) {
-    printf("command failed with %d\n. getting sense...", rc);
-    struct scsi_sense_data sense;
-    int rc = scsi_request_sense(discreader, &sense);
-    if (rc != 0) {
-      printf("command failed with:\nSENSE KEY: %d\nASC: %d\nASCQ: %d\n",
-             sense.senseKey, sense.ASC, sense.ASCQ);
-      return -1;
-    }
-    printf(
-        "command success with:\nSENSE KEY: 0x%02x\nASC: 0x%02x\nASCQ: 0x%02x\n",
-        sense.senseKey, sense.ASC, sense.ASCQ);
+  // Read TOC with forms 0->2
+  FILE* logfile = fopen(file_name, "r");
+  if (logfile == NULL) {
+    printf("Could Not Open File\n");
+    perror(file_name);
     return -1;
   }
-  printf("Done.\nSending Event Status......\n");
-  int power_data_len = 8;
-  char power_data[power_data_len];
-  rc = scsi_get_event_status_notification(discreader, 1, 0 | (1<<2), 
-      power_data_len, power_data);
-  if (rc != 0) {
-    printf("command failed with %d\n. getting sense...", rc);
-    struct scsi_sense_data sense;
-    int rc = scsi_request_sense(discreader, &sense);
-    if (rc != 0) {
-      printf("command failed with:\nSENSE KEY: %d\nASC: %d\nASCQ: %d\n",
-             sense.senseKey, sense.ASC, sense.ASCQ);
+  for (uint8_t toc_form = 0; toc_form < 3; toc_form++) {
+    printf("Reading TOC Form %d... ", toc_form);
+    fprintf(logfile, "\r\nSTART TOC FORM %d\r\n", toc_form);
+    unsigned char data[804];
+    if (scsi_read_toc(discreader, toc_form, 0, 0, data) != 0) {
+      sense_handler(discreader);
+      fclose(logfile);
       return -1;
     }
-    printf(
-        "command success with:\nSENSE KEY: 0x%02x\nASC: 0x%02x\nASCQ: 0x%02x\n",
-        sense.senseKey, sense.ASC, sense.ASCQ);
-    return -1;
+    fprintf(logfile, "%s", data);
+    fprintf(logfile, "\r\nEND TOC FORM %d\r\n", toc_form);
+    printf("Done.\n");
   }
-  printf("power data:\n");
-  for (int i = 0; i < power_data_len; i++) {
-    printf("%d: %02x\n", i, power_data[i]);
-  }
-  //scsi_event_notif_pprint(power_data, power_data_len);
+  printf("Dumped TOC Data without issue\n");
+  fflush(logfile);
+  fclose(logfile);
   return 0;
 }
