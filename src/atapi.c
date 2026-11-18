@@ -179,7 +179,8 @@ int scsi_inquiry(libusb_device_handle *handle, unsigned char *data) {
   return rc;
 }
 int scsi_read_toc(libusb_device_handle *handle, uint8_t format,
-                  uint8_t track_number, uint8_t msf, size_t *bytes_read, unsigned char *data) {
+                  uint8_t track_number, uint8_t msf, uint16_t alloc_length,
+                  size_t *bytes_read, unsigned char *data) {
   int rc;
   int bytes_transferred;
   int retry = 0;
@@ -207,14 +208,14 @@ int scsi_read_toc(libusb_device_handle *handle, uint8_t format,
   cdb[2] = format;
   cdb[6] = track_number;
   // To allocate 804 bytes, we must put the LSB in cdb[8] and MSB in cdb[7]
-  cdb[8] = MAX_TOC_DATA_LENGTH & 0x00FF;
-  cdb[7] = (MAX_TOC_DATA_LENGTH >> 8);
-  if (usb_send_cbw(handle, cdb, MAX_TOC_DATA_LENGTH, &expected_tag) != 0) {
+  cdb[8] = alloc_length & 0x00FF;
+  cdb[7] = (alloc_length >> 8);
+  if (usb_send_cbw(handle, cdb, alloc_length, &expected_tag) != 0) {
     printf("couldn't send command to USB device");
     return -1;
   }
   rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)data,
-                            MAX_TOC_DATA_LENGTH, &bytes_transferred, 5000);
+                            alloc_length, &bytes_transferred, 5000);
   while ((rc == LIBUSB_ERROR_PIPE) && (retry < RETRY_MAX)) {
     printf("clearing halt...\n");
     int rc2 = libusb_clear_halt(handle, ENDPOINT_IN);
@@ -223,7 +224,7 @@ int scsi_read_toc(libusb_device_handle *handle, uint8_t format,
       return -1;
     }
     rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)data,
-                              MAX_TOC_DATA_LENGTH, &bytes_transferred, 5000);
+                              alloc_length, &bytes_transferred, 5000);
     retry++;
   }
   if (rc != 0) {
@@ -231,11 +232,11 @@ int scsi_read_toc(libusb_device_handle *handle, uint8_t format,
            libusb_error_name(rc), bytes_transferred);
     return -1;
   }
-  if (bytes_transferred != MAX_TOC_DATA_LENGTH) {
+  if (bytes_transferred != alloc_length) {
     // We log the error, but do not stop execution as different drives may send
     // different INQUIRY lengths
     printf("Host only send %d bytes (expected %d)\n", bytes_transferred,
-           MAX_TOC_DATA_LENGTH);
+           alloc_length);
   }
   printf("Bulk Transfer IN succeeded with %d bytes transferred\n",
          bytes_transferred);
@@ -248,8 +249,8 @@ int scsi_read_toc(libusb_device_handle *handle, uint8_t format,
   return rc;
 }
 int scsi_read_subchannel(libusb_device_handle *handle, uint8_t track_number,
-                         uint8_t msf, uint8_t sub_q, size_t *bytes_read,
-                         unsigned char *data) {
+                         uint8_t msf, uint8_t sub_q, uint8_t param_list,
+                         uint16_t alloc_length, size_t *bytes_read, unsigned char *data) {
   int rc;
   int bytes_transferred;
   int retry = 0;
@@ -269,8 +270,9 @@ int scsi_read_subchannel(libusb_device_handle *handle, uint8_t track_number,
   // Read TOC Opcode: 0x12
   cdb[0] = 0x42;
   // Set MSF to 0
-  cdb[1] = 0 | ((msf&1u) << 1);
-  cdb[2] = (sub_q&1u) << 6;
+  cdb[1] = 0 | ((msf & 1u) << 1);
+  cdb[2] = (sub_q & 1u) << 6;
+  cdb[3] = param_list;
   cdb[6] = track_number;
   // To allocate 804 bytes, we must put the LSB in cdb[8] and MSB in cdb[7]
   cdb[8] = MAX_TOC_DATA_LENGTH & 0x00FF;
@@ -300,7 +302,7 @@ int scsi_read_subchannel(libusb_device_handle *handle, uint8_t track_number,
   if (bytes_transferred != MAX_TOC_DATA_LENGTH) {
     // We log the error, but do not stop execution as different drives may send
     // different INQUIRY lengths
-    printf("Host only send %d bytes (expected %d)\n", bytes_transferred,
+    printf("Host only send %d bytes (allocated %d)\n", bytes_transferred,
            MAX_TOC_DATA_LENGTH);
   }
   printf("Bulk Transfer IN succeeded with %d bytes transferred\n",
@@ -312,7 +314,6 @@ int scsi_read_subchannel(libusb_device_handle *handle, uint8_t track_number,
   }
   *bytes_read = bytes_transferred;
   return rc;
-
 }
 int scsi_get_event_status_notification(libusb_device_handle *handle,
                                        uint8_t immed, uint8_t request_bits,

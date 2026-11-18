@@ -40,8 +40,8 @@ int scsi_start_stop_unit(libusb_device_handle *handle, uint8_t power_condition,
 int scsi_inquiry(libusb_device_handle *handle, unsigned char *data);
 // Read TOC of passed-in Track Number. Passes through the number of bytes read
 int scsi_read_toc(libusb_device_handle *handle, uint8_t format,
-                  uint8_t track_number, uint8_t msf, size_t *bytes_read,
-                  unsigned char *data);
+                  uint8_t track_number, uint8_t msf, uint16_t alloc_length,
+                  size_t *bytes_read, unsigned char *data);
 // sends the read_cd_msf command. Will only request one frame at a time.
 // Sector type is hardcoded to 0b001 (CD-DA).
 int scsi_read_cd_msf(libusb_device_handle *handle, struct scsi_msf addr,
@@ -50,7 +50,8 @@ int scsi_read_cd_msf(libusb_device_handle *handle, struct scsi_msf addr,
 
 // sends the read subchannel command. Passes through the number of bytes read.
 int scsi_read_subchannel(libusb_device_handle *handle, uint8_t track_number,
-                         uint8_t msf, uint8_t sub_q, uint8_t param_list, size_t *bytes_read,
+                         uint8_t msf, uint8_t sub_q, uint8_t param_list,
+                         uint16_t alloc_length, size_t *bytes_read,
                          unsigned char *data);
 // sends the scsi_get_event_status_notification command.
 // data buffer will be assumed to have enough space to hold the data
