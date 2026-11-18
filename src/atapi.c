@@ -247,6 +247,73 @@ int scsi_read_toc(libusb_device_handle *handle, uint8_t format,
   *bytes_read = bytes_transferred;
   return rc;
 }
+int scsi_read_subchannel(libusb_device_handle *handle, uint8_t track_number,
+                         uint8_t msf, uint8_t sub_q, size_t *bytes_read,
+                         unsigned char *data) {
+  int rc;
+  int bytes_transferred;
+  int retry = 0;
+  uint32_t expected_tag;
+  unsigned char cdb[12];
+  // Make sure format is not greater than 0b1010
+  // There can only be 100 tracks, so any track request above 99 is invalid
+  if (track_number > 100) {
+    printf("Track Number too large\n");
+    return -1;
+  }
+  if (msf > 1) {
+    printf("invalid msf\n");
+    return -1;
+  }
+  memset(cdb, 0, 12);
+  // Read TOC Opcode: 0x12
+  cdb[0] = 0x42;
+  // Set MSF to 0
+  cdb[1] = 0 | ((msf&1u) << 1);
+  cdb[2] = (sub_q&1u) << 6;
+  cdb[6] = track_number;
+  // To allocate 804 bytes, we must put the LSB in cdb[8] and MSB in cdb[7]
+  cdb[8] = MAX_TOC_DATA_LENGTH & 0x00FF;
+  cdb[7] = (MAX_TOC_DATA_LENGTH >> 8);
+  if (usb_send_cbw(handle, cdb, MAX_TOC_DATA_LENGTH, &expected_tag) != 0) {
+    printf("couldn't send command to USB device");
+    return -1;
+  }
+  rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)data,
+                            MAX_TOC_DATA_LENGTH, &bytes_transferred, 5000);
+  while ((rc == LIBUSB_ERROR_PIPE) && (retry < RETRY_MAX)) {
+    printf("clearing halt...\n");
+    int rc2 = libusb_clear_halt(handle, ENDPOINT_IN);
+    if (rc2 != 0) {
+      printf("stall clear failed with %d\n", rc2);
+      return -1;
+    }
+    rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)data,
+                              MAX_TOC_DATA_LENGTH, &bytes_transferred, 5000);
+    retry++;
+  }
+  if (rc != 0) {
+    printf("Bulk Transfer IN failed with %s and %d bytes transferred\n",
+           libusb_error_name(rc), bytes_transferred);
+    return -1;
+  }
+  if (bytes_transferred != MAX_TOC_DATA_LENGTH) {
+    // We log the error, but do not stop execution as different drives may send
+    // different INQUIRY lengths
+    printf("Host only send %d bytes (expected %d)\n", bytes_transferred,
+           MAX_TOC_DATA_LENGTH);
+  }
+  printf("Bulk Transfer IN succeeded with %d bytes transferred\n",
+         bytes_transferred);
+  rc = usb_get_csw(handle, &expected_tag);
+  if (rc < 0) {
+    printf("invalid command status wrapper\n");
+    return -1;
+  }
+  *bytes_read = bytes_transferred;
+  return rc;
+
+}
 int scsi_get_event_status_notification(libusb_device_handle *handle,
                                        uint8_t immed, uint8_t request_bits,
                                        uint16_t alloc_length,

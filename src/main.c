@@ -53,7 +53,6 @@ int main(int argc, char *argv[]) {
   if (scsi_start_stop_unit(discreader, 0, 0, 0, 1) != 0) {
     sense_handler(discreader);
     return -1;
-
   }
   printf("Done\n");
   // Read TOC with forms 0->2

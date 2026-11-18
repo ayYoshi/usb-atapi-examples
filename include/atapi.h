@@ -40,21 +40,28 @@ int scsi_start_stop_unit(libusb_device_handle *handle, uint8_t power_condition,
 int scsi_inquiry(libusb_device_handle *handle, unsigned char *data);
 // Read TOC of passed-in Track Number. Passes through the number of bytes read
 int scsi_read_toc(libusb_device_handle *handle, uint8_t format,
-                  uint8_t track_number, uint8_t msf, size_t *bytes_read, unsigned char *data);
+                  uint8_t track_number, uint8_t msf, size_t *bytes_read,
+                  unsigned char *data);
 // sends the read_cd_msf command. Will only request one frame at a time.
 // Sector type is hardcoded to 0b001 (CD-DA).
 int scsi_read_cd_msf(libusb_device_handle *handle, struct scsi_msf addr,
                      uint8_t flag_bits, uint8_t subchannel_selection,
                      unsigned char *data);
 
+// sends the read subchannel command. Passes through the number of bytes read.
+int scsi_read_subchannel(libusb_device_handle *handle, uint8_t track_number,
+                         uint8_t msf, uint8_t sub_q, uint8_t param_list, size_t *bytes_read,
+                         unsigned char *data);
 // sends the scsi_get_event_status_notification command.
 // data buffer will be assumed to have enough space to hold the data
-int scsi_get_event_status_notification(libusb_device_handle *handle, uint8_t immed, uint8_t request_bits, uint16_t alloc_length, unsigned char *data);
+int scsi_get_event_status_notification(libusb_device_handle *handle,
+                                       uint8_t immed, uint8_t request_bits,
+                                       uint16_t alloc_length,
+                                       unsigned char *data);
 
-// Request sense data following a failed command. Displays the Sense Key, ASC, and ASCQ
-// Note: Will NOT Terminate the main program
+// Request sense data following a failed command. Displays the Sense Key, ASC,
+// and ASCQ Note: Will NOT Terminate the main program
 void sense_handler(libusb_device_handle *handle);
-
 
 // Prints inquiry data in a readable format. inquiry_data must be at least 95
 // bytes long
@@ -73,4 +80,3 @@ void scsi_TOC_CDText_parse(unsigned char *toc_data, int num_tracks,
 void sense_handler(libusb_device_handle *handle);
 // Increment MSF frame
 void increment_msf(struct scsi_msf *addr);
-
