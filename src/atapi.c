@@ -201,13 +201,11 @@ int scsi_read_toc(libusb_device_handle *handle, uint8_t format,
     return -1;
   }
   memset(cdb, 0, 12);
-  // Read TOC Opcode: 0x12
   cdb[0] = 0x43;
   // Set MSF to 0
   cdb[1] = 0 | (msf << 1);
   cdb[2] = format;
   cdb[6] = track_number;
-  // To allocate 804 bytes, we must put the LSB in cdb[8] and MSB in cdb[7]
   cdb[8] = alloc_length & 0x00FF;
   cdb[7] = (alloc_length >> 8);
   if (usb_send_cbw(handle, cdb, alloc_length, &expected_tag) != 0) {
@@ -275,14 +273,14 @@ int scsi_read_subchannel(libusb_device_handle *handle, uint8_t track_number,
   cdb[3] = param_list;
   cdb[6] = track_number;
   // To allocate 804 bytes, we must put the LSB in cdb[8] and MSB in cdb[7]
-  cdb[8] = MAX_TOC_DATA_LENGTH & 0x00FF;
-  cdb[7] = (MAX_TOC_DATA_LENGTH >> 8);
-  if (usb_send_cbw(handle, cdb, MAX_TOC_DATA_LENGTH, &expected_tag) != 0) {
+  cdb[8] = alloc_length & 0x00FF;
+  cdb[7] = (alloc_length >> 8);
+  if (usb_send_cbw(handle, cdb, alloc_length, &expected_tag) != 0) {
     printf("couldn't send command to USB device");
     return -1;
   }
   rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)data,
-                            MAX_TOC_DATA_LENGTH, &bytes_transferred, 5000);
+                            alloc_length, &bytes_transferred, 5000);
   while ((rc == LIBUSB_ERROR_PIPE) && (retry < RETRY_MAX)) {
     printf("clearing halt...\n");
     int rc2 = libusb_clear_halt(handle, ENDPOINT_IN);
@@ -291,7 +289,7 @@ int scsi_read_subchannel(libusb_device_handle *handle, uint8_t track_number,
       return -1;
     }
     rc = libusb_bulk_transfer(handle, ENDPOINT_IN, (unsigned char *)data,
-                              MAX_TOC_DATA_LENGTH, &bytes_transferred, 5000);
+                              alloc_length, &bytes_transferred, 5000);
     retry++;
   }
   if (rc != 0) {
@@ -299,11 +297,11 @@ int scsi_read_subchannel(libusb_device_handle *handle, uint8_t track_number,
            libusb_error_name(rc), bytes_transferred);
     return -1;
   }
-  if (bytes_transferred != MAX_TOC_DATA_LENGTH) {
+  if (bytes_transferred != alloc_length) {
     // We log the error, but do not stop execution as different drives may send
     // different INQUIRY lengths
     printf("Host only send %d bytes (allocated %d)\n", bytes_transferred,
-           MAX_TOC_DATA_LENGTH);
+           alloc_length);
   }
   printf("Bulk Transfer IN succeeded with %d bytes transferred\n",
          bytes_transferred);

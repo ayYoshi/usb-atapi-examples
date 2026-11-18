@@ -64,29 +64,38 @@ int main(int argc, char *argv[]) {
     return -1;
   }
   printf("Done\n");
-  for (uint8_t toc_form = 0; toc_form < 5; toc_form++) {
-    size_t bytes_read = 0;
-    printf("Reading TOC Form %d... ", toc_form);
-    fprintf(logfile, "\r\nSTART TOC FORM %d\r\n", toc_form);
-    unsigned char data[804];
-    // read toc with toc form, LBA addressing and at track 0
-    if (scsi_read_toc(discreader, toc_form, 0, 0, &bytes_read, data) != 0) {
-      printf("Could not read TOC form %d\n", toc_form);
-      sense_handler(discreader);
-      fclose(logfile);
-      libusb_close(discreader);
+  // Goal: Get number of tracks and read dump all Q-SUBCHANNEl data for the tracks
+  size_t bytes_read = 0;
+  unsigned char toc_header[4];
+  printf("Getting TOC Header...\n");
+  if (scsi_read_toc(discreader, 0b00, 0, 0, 4, &bytes_read, toc_header) != 0) {
+    sense_handler(discreader);
+    return -1;
+  }
+  uint8_t first_track = toc_header[2];
+  uint8_t last_track = toc_header[3];
+
+  printf("First Track: %d\nLast Track: %d\n", first_track, last_track);
+
+  printf("Will attempt to dump Q-SUBCHANNEl data\n");
+  for (uint8_t i = first_track; i <= last_track; i++) {
+    printf("Getting data for Track %d... ", i);
+    unsigned char q_subchannel_data[804] = {0};
+    if (scsi_read_subchannel(discreader, i, 1u, 1u, 0x01, 804, &bytes_read, q_subchannel_data) != 0) {
+      printf("Read operation failed for Track %d\n", i);
       return -1;
     }
-    printf("Read %lu bytes\n", bytes_read);
-    if(fwrite(data, sizeof(unsigned char), bytes_read, logfile) != bytes_read) {
-      printf("Could not write to file on TOC FORM %d\n", toc_form);
-      perror(file_name);
+    fprintf(logfile, "\r\nSTART TRACK %d\r\n", i);
+    int log_bytes = fwrite(q_subchannel_data, sizeof(unsigned char), bytes_read, logfile);
+    if (log_bytes != bytes_read) {
+      printf("%s only had %d bytes written (expected %zu)", file_name, log_bytes, bytes_read);
       return -1;
     }
-    fprintf(logfile, "\r\nEND TOC FORM %d\r\n", toc_form);
+    fprintf(logfile, "\r\nEND TRACK %d\r\n", i);
     printf("Done.\n");
   }
-  printf("Dumped TOC Data without issue\n");
+  printf("Dumped all %d tracks without issue\n", (last_track - first_track));
+
   fflush(logfile);
   fclose(logfile);
   libusb_close(discreader);
